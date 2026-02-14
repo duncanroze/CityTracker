@@ -6,3 +6,64 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum TransportType {
+  METRO
+  RER
+  TRAM
+  BUS
+}
+
+model Line {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  name          String
+  transportType TransportType
+  color         String
+  textColor     String        @default("#FFFFFF")
+  isActive      Boolean       @default(true)
+  lineStops     LineStop[]
+
+  @@index([transportType])
+}
+
+model Station {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  latitude     Float
+  longitude    Float
+  isAccessible Boolean   @default(false)
+  municipality String?
+  lineStops    LineStop[]
+
+  @@index([name])
+  @@index([latitude, longitude])
+}
+
+model LineStop {
+  id               String       @id @default(cuid())
+  position         Int
+  travelTimeToNext Int?
+  lineId           String
+  stationId        String
+  line             Line         @relation(fields: [lineId], references: [id], onDelete: Cascade)
+  station          Station      @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  connectionsFrom  Connection[] @relation("ConnectionFrom")
+  connectionsTo    Connection[] @relation("ConnectionTo")
+
+  @@unique([lineId, position])
+  @@unique([lineId, stationId])
+  @@index([stationId])
+}
+
+model Connection {
+  id             String   @id @default(cuid())
+  walkingTime    Int
+  fromLineStopId String
+  toLineStopId   String
+  fromLineStop   LineStop @relation("ConnectionFrom", fields: [fromLineStopId], references: [id], onDelete: Cascade)
+  toLineStop     LineStop @relation("ConnectionTo", fields: [toLineStopId], references: [id], onDelete: Cascade)
+
+  @@unique([fromLineStopId, toLineStopId])
+}
