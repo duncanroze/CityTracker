@@ -12,12 +12,13 @@ interface RouteSummaryProps {
 export default function RouteSummary({ route }: RouteSummaryProps) {
   const totalWait = route.segments.reduce((sum, s) => sum + (s.waitTimeSeconds ?? 0), 0);
   const hasWaitData = totalWait > 0;
+  const estimatedTotal = route.totalDurationSeconds + totalWait;
 
   return (
     <div className="flex items-center gap-6 text-sm">
       <div>
         <span className="text-gray-500">Duration</span>
-        <p className="font-semibold text-gray-900">{formatDuration(route.totalDurationSeconds)}</p>
+        <p className="font-semibold text-gray-900">{formatDuration(hasWaitData ? estimatedTotal : route.totalDurationSeconds)}</p>
         {hasWaitData && (
           <p className="text-xs text-gray-400">
             dont ~{Math.ceil(totalWait / 60)} min d'attente

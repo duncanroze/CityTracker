@@ -1,4 +1,5 @@
 import { getGraph, type TransportGraph, type LineStopInfo } from './graph.js';
+import { getBoardingPenalty } from './headways.js';
 
 interface QueueEntry {
   lineStopId: string;
@@ -46,7 +47,7 @@ export interface MultiRouteResult {
 export async function findRoute(
   fromStationId: string,
   toStationId: string,
-  transferPenalty: number = 30,
+  excludeLines?: Set<string>,
 ): Promise<RouteResult> {
   const graph = await getGraph();
 
@@ -107,11 +108,16 @@ export async function findRoute(
     return min;
   }
 
-  // Seed with all origin line stops
+  // Seed with all origin line stops (skip excluded lines)
+  // Each origin gets a boarding penalty = headway/2 (expected wait for first train)
   for (const lsId of originStops) {
-    dist.set(lsId, 0);
+    const info = graph.lineStopInfo.get(lsId);
+    if (!info) continue;
+    if (excludeLines && excludeLines.has(info.lineCode)) continue;
+    const boarding = getBoardingPenalty(info.lineCode, info.transportType);
+    dist.set(lsId, boarding);
     prev.set(lsId, null);
-    enqueue(lsId, 0);
+    enqueue(lsId, boarding);
   }
 
   let foundLineStopId: string | null = null;
@@ -131,7 +137,19 @@ export async function findRoute(
     if (!edges) continue;
 
     for (const edge of edges) {
-      const penalty = edge.type === 'transfer' ? transferPenalty : 0;
+      // Skip edges leading to excluded lines (both travel and transfer)
+      if (excludeLines) {
+        const targetInfo = graph.lineStopInfo.get(edge.toLineStopId);
+        if (targetInfo && excludeLines.has(targetInfo.lineCode)) continue;
+      }
+      // When transferring, add boarding penalty for the target line (headway/2)
+      let penalty = 0;
+      if (edge.type === 'transfer') {
+        const targetInfo = graph.lineStopInfo.get(edge.toLineStopId);
+        if (targetInfo) {
+          penalty = getBoardingPenalty(targetInfo.lineCode, targetInfo.transportType);
+        }
+      }
       const newDist = distance + edge.weight + penalty;
       const currentDist = dist.get(edge.toLineStopId);
 
@@ -273,30 +291,46 @@ export async function findRoutes(
   fromStationId: string,
   toStationId: string,
 ): Promise<MultiRouteResult> {
-  const penalties = [30, 300, 0];
   const seen = new Set<string>();
   const routes: LabeledRoute[] = [];
+  const MAX_ROUTES = 4;
 
-  for (const penalty of penalties) {
-    const result = await findRoute(fromStationId, toStationId, penalty);
-    if (!result.found) continue;
+  // 1. Fastest route (boarding penalties from headway data)
+  const fastest = await findRoute(fromStationId, toStationId);
+  if (!fastest.found) {
+    return { found: false, routes: [] };
+  }
+  seen.add(routeFingerprint(fastest));
+  routes.push({ label: 'Fastest', route: fastest });
 
-    const fp = routeFingerprint(result);
+  // 2. Generate alternatives by excluding lines from the fastest route
+  const fastestLines = fastest.segments.map((s) => s.lineCode);
+
+  // Try excluding each line individually
+  for (const line of fastestLines) {
+    if (routes.length >= MAX_ROUTES) break;
+    const alt = await findRoute(fromStationId, toStationId, new Set([line]));
+    if (!alt.found) continue;
+    const fp = routeFingerprint(alt);
     if (seen.has(fp)) continue;
     seen.add(fp);
-
-    routes.push({ label: '', route: result });
+    routes.push({ label: '', route: alt });
   }
 
-  if (routes.length === 0) {
-    return { found: false, routes: [] };
+  // Try excluding middle lines together (keep origin/destination lines)
+  if (routes.length < MAX_ROUTES && fastestLines.length > 2) {
+    const middleLines = new Set(fastestLines.slice(1, -1));
+    const alt = await findRoute(fromStationId, toStationId, middleLines);
+    if (alt.found) {
+      const fp = routeFingerprint(alt);
+      if (!seen.has(fp)) {
+        seen.add(fp);
+        routes.push({ label: '', route: alt });
+      }
+    }
   }
 
   // Label routes
-  // First route (penalty=30) is "Fastest"
-  routes[0].label = 'Fastest';
-
-  // Find the one with fewest transfers
   if (routes.length > 1) {
     let minTransfers = routes[0].route.totalTransfers;
     let minIdx = 0;
@@ -309,7 +343,6 @@ export async function findRoutes(
     if (minIdx !== 0) {
       routes[minIdx].label = 'Fewer transfers';
     }
-    // Label remaining unlabeled as "Alternative"
     for (const r of routes) {
       if (!r.label) r.label = 'Alternative';
     }

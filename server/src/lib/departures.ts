@@ -8,6 +8,7 @@
 
 import { prisma } from "./prisma.js";
 import { getNextDepartures } from "./prim.js";
+import { updateLineHeadway } from "./headways.js";
 import type { RouteResult, RouteSegment } from "./pathfinder.js";
 
 /**
@@ -43,15 +44,19 @@ export async function enrichRouteWithDepartures(route: RouteResult): Promise<Rou
         ? allDepartures.filter((d) => d.lineRef.includes(idfmLineId))
         : allDepartures;
 
-      return lineDepartures
+      const times = lineDepartures
         .map((d) => new Date(d.expectedDeparture))
         .sort((a, b) => a.getTime() - b.getTime());
+
+      // Update headway cache from real-time data
+      updateLineHeadway(segment.lineCode, times);
+
+      return times;
     }),
   );
 
   // 2. Process sequentially: propagate arrival time through segments
   let arrivalTime = new Date(); // starts at "now"
-  let totalWaitTime = 0;
   const enrichedSegments: RouteSegment[] = [];
 
   for (let i = 0; i < route.segments.length; i++) {
@@ -89,8 +94,6 @@ export async function enrichRouteWithDepartures(route: RouteResult): Promise<Rou
       0,
       Math.round((nextDeparture.getTime() - arrivalTime.getTime()) / 1000),
     );
-    totalWaitTime += waitTimeSeconds;
-
     const nextDepartures = futureDepartures
       .slice(0, 3)
       .map((d) => d.toISOString());
@@ -114,6 +117,5 @@ export async function enrichRouteWithDepartures(route: RouteResult): Promise<Rou
   return {
     ...route,
     segments: enrichedSegments,
-    totalDurationSeconds: route.totalDurationSeconds + totalWaitTime,
   };
 }
