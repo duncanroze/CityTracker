@@ -22,6 +22,7 @@ model Line {
   color         String
   textColor     String        @default("#FFFFFF")
   isActive      Boolean       @default(true)
+  idfmId        String?
   lineStops     LineStop[]
 
   @@index([transportType])
@@ -51,6 +52,7 @@ model LineStop {
   station          Station      @relation(fields: [stationId], references: [id], onDelete: Cascade)
   connectionsFrom  Connection[] @relation("ConnectionFrom")
   connectionsTo    Connection[] @relation("ConnectionTo")
+  idfmMapping      IdfmStopMapping?
 
   @@unique([lineId, position])
   @@unique([lineId, stationId])
@@ -66,4 +68,12 @@ model Connection {
   toLineStop     LineStop @relation("ConnectionTo", fields: [toLineStopId], references: [id], onDelete: Cascade)
 
   @@unique([fromLineStopId, toLineStopId])
+}
+
+model IdfmStopMapping {
+  id          String   @id @default(cuid())
+  lineStopId  String   @unique
+  idfmStopId  String
+  isStopArea  Boolean  @default(false)
+  lineStop    LineStop  @relation(fields: [lineStopId], references: [id], onDelete: Cascade)
 }

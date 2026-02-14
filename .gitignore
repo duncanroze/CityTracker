@@ -10,6 +10,9 @@ build/
 # Prisma
 server/prisma/generated/
 
+# Claude Code
+.claude/
+
 # IDE
 .vscode/
 .idea/
