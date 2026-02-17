@@ -38,8 +38,9 @@ server/
       prisma.ts           # Prisma client singleton
       graph.ts            # Transport graph (adjacency list from DB)
       pathfinder.ts       # Dijkstra routing with transfer penalties
-      prim.ts             # PRIM IDFM real-time API client
-      departures.ts       # Route enrichment with real-time departures
+      prim.ts             # PRIM IDFM real-time API client (SIRI Lite)
+      departures.ts       # Route enrichment with real-time departures & wait times
+      headways.ts         # Per-line headway tracking (from PRIM data, with defaults)
     routes/
       stations.ts         # GET /api/stations
       route.ts            # GET /api/route?from=&to=
@@ -68,6 +69,14 @@ client/
 - Transport graph cached globally in `graph.ts`
 - Server types defined in `pathfinder.ts`, mirrored in `client/src/types.ts`
 - Env vars: `DATABASE_URL`, `PORT`, `PRIM_API_KEY`
+
+## Real-time Departures & Wait Times
+
+- PRIM (IDFM SIRI Lite) provides real-time next departures per stop
+- `departures.ts` enriches routes sequentially: arrival time propagates through segments
+- Wait time per segment = time between arrival at station and next real-time departure
+- Fallback: when PRIM has no future departures for the estimated arrival time, uses `headway/2` from `headways.ts`
+- `totalDurationSeconds` includes travel + walking transfers + wait times at each boarding
 
 ## Database Models
 

@@ -8,7 +8,7 @@
 
 import { prisma } from "./prisma.js";
 import { getNextDepartures } from "./prim.js";
-import { updateLineHeadway } from "./headways.js";
+import { getBoardingPenalty, updateLineHeadway } from "./headways.js";
 import type { RouteResult, RouteSegment } from "./pathfinder.js";
 
 /**
@@ -63,25 +63,18 @@ export async function enrichRouteWithDepartures(route: RouteResult): Promise<Rou
     const segment = route.segments[i];
     const departureTimes = prefetched[i];
 
-    if (!departureTimes || departureTimes.length === 0) {
-      // No real-time data — assume no wait, advance by travel time
-      arrivalTime = new Date(arrivalTime.getTime() + segment.durationSeconds * 1000);
-      enrichedSegments.push(segment);
-
-      // Add transfer walking time if there's a next segment
-      const transfer = route.transfers[i];
-      if (transfer) {
-        arrivalTime = new Date(arrivalTime.getTime() + transfer.walkingTimeSeconds * 1000);
-      }
-      continue;
-    }
-
     // Find the first departure AFTER we arrive at this station
-    const futureDepartures = departureTimes.filter((d) => d > arrivalTime);
+    const futureDepartures = departureTimes
+      ? departureTimes.filter((d) => d > arrivalTime)
+      : [];
 
     if (futureDepartures.length === 0) {
-      arrivalTime = new Date(arrivalTime.getTime() + segment.durationSeconds * 1000);
-      enrichedSegments.push(segment);
+      // No real-time departure available for our arrival time — use headway estimate
+      const waitTimeSeconds = getBoardingPenalty(segment.lineCode, segment.transportType);
+      enrichedSegments.push({ ...segment, waitTimeSeconds });
+      arrivalTime = new Date(
+        arrivalTime.getTime() + (waitTimeSeconds + segment.durationSeconds) * 1000,
+      );
       const transfer = route.transfers[i];
       if (transfer) {
         arrivalTime = new Date(arrivalTime.getTime() + transfer.walkingTimeSeconds * 1000);
@@ -114,8 +107,22 @@ export async function enrichRouteWithDepartures(route: RouteResult): Promise<Rou
     }
   }
 
+  // Recalculate total duration including real-time wait times
+  const totalWaitSeconds = enrichedSegments.reduce(
+    (sum, s) => sum + (s.waitTimeSeconds ?? 0),
+    0,
+  );
+  const totalDurationSeconds = enrichedSegments.reduce(
+    (sum, s) => sum + s.durationSeconds,
+    0,
+  ) + route.transfers.reduce(
+    (sum, t) => sum + t.walkingTimeSeconds,
+    0,
+  ) + totalWaitSeconds;
+
   return {
     ...route,
     segments: enrichedSegments,
+    totalDurationSeconds,
   };
 }
