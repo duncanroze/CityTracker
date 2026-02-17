@@ -44,11 +44,18 @@ export interface MultiRouteResult {
   routes: LabeledRoute[];
 }
 
+interface FindRouteOptions {
+  excludeLines?: Set<string>;
+  /** Multiplier on transfer penalties (1 = normal, higher = avoid transfers) */
+  transferPenaltyMultiplier?: number;
+}
+
 export async function findRoute(
   fromStationId: string,
   toStationId: string,
-  excludeLines?: Set<string>,
+  options?: FindRouteOptions,
 ): Promise<RouteResult> {
+  const { excludeLines, transferPenaltyMultiplier = 1 } = options ?? {};
   const graph = await getGraph();
 
   const originStops = graph.stationToLineStops.get(fromStationId);
@@ -147,7 +154,7 @@ export async function findRoute(
       if (edge.type === 'transfer') {
         const targetInfo = graph.lineStopInfo.get(edge.toLineStopId);
         if (targetInfo) {
-          penalty = getBoardingPenalty(targetInfo.lineCode, targetInfo.transportType);
+          penalty = getBoardingPenalty(targetInfo.lineCode, targetInfo.transportType) * transferPenaltyMultiplier;
         }
       }
       const newDist = distance + edge.weight + penalty;
@@ -282,9 +289,7 @@ function pushSegment(
 }
 
 function routeFingerprint(route: RouteResult): string {
-  const lineCodes = route.segments.map((s) => s.lineCode).sort().join(',');
-  const stopCount = route.segments.reduce((sum, s) => sum + s.stops.length, 0);
-  return `${lineCodes}|${stopCount}`;
+  return route.segments.map((s) => s.lineCode).sort().join(',');
 }
 
 export async function findRoutes(
@@ -292,61 +297,85 @@ export async function findRoutes(
   toStationId: string,
 ): Promise<MultiRouteResult> {
   const seen = new Set<string>();
-  const routes: LabeledRoute[] = [];
-  const MAX_ROUTES = 4;
+  const candidates: RouteResult[] = [];
+  const MAX_ROUTES = 5;
 
-  // 1. Fastest route (boarding penalties from headway data)
+  function addCandidate(route: RouteResult) {
+    if (!route.found) return;
+    const fp = routeFingerprint(route);
+    if (seen.has(fp)) return;
+    seen.add(fp);
+    candidates.push(route);
+  }
+
+  // 1. Fastest route (normal transfer penalties)
   const fastest = await findRoute(fromStationId, toStationId);
   if (!fastest.found) {
     return { found: false, routes: [] };
   }
-  seen.add(routeFingerprint(fastest));
-  routes.push({ label: 'Fastest', route: fastest });
+  addCandidate(fastest);
 
-  // 2. Generate alternatives by excluding lines from the fastest route
-  const fastestLines = fastest.segments.map((s) => s.lineCode);
-
-  // Try excluding each line individually
-  for (const line of fastestLines) {
-    if (routes.length >= MAX_ROUTES) break;
-    const alt = await findRoute(fromStationId, toStationId, new Set([line]));
-    if (!alt.found) continue;
-    const fp = routeFingerprint(alt);
-    if (seen.has(fp)) continue;
-    seen.add(fp);
-    routes.push({ label: '', route: alt });
+  // 2. Run with increasing transfer penalty to discover fewer-transfer routes
+  for (const multiplier of [4, 8, 15]) {
+    addCandidate(await findRoute(fromStationId, toStationId, { transferPenaltyMultiplier: multiplier }));
   }
 
-  // Try excluding middle lines together (keep origin/destination lines)
-  if (routes.length < MAX_ROUTES && fastestLines.length > 2) {
-    const middleLines = new Set(fastestLines.slice(1, -1));
-    const alt = await findRoute(fromStationId, toStationId, middleLines);
-    if (alt.found) {
-      const fp = routeFingerprint(alt);
-      if (!seen.has(fp)) {
-        seen.add(fp);
-        routes.push({ label: '', route: alt });
-      }
+  // 3. Iteratively discover alternatives by excluding middle lines.
+  //    Each round collects middle lines from ALL known routes (including
+  //    routes found in previous rounds), then tries exclusion combos.
+  const processedExclusions = new Set<string>();
+  let lastCandidateCount = 0;
+
+  for (let round = 0; round < 3; round++) {
+    if (candidates.length >= MAX_ROUTES * 2) break;
+    if (candidates.length === lastCandidateCount && round > 0) break; // no new routes found
+    lastCandidateCount = candidates.length;
+
+    const allMiddle = [
+      ...new Set(
+        candidates.flatMap((c) => {
+          const codes = c.segments.map((s) => s.lineCode);
+          return codes.slice(1, -1);
+        }),
+      ),
+    ];
+
+    // Try excluding pairs (includes singles when paired with themselves via individual loop)
+    const exclusionSets: Set<string>[] = [
+      // Each individual middle line
+      ...allMiddle.map((l) => new Set([l])),
+      // Each pair
+      ...allMiddle.flatMap((a, i) =>
+        allMiddle.slice(i + 1).map((b) => new Set([a, b])),
+      ),
+      // All middle lines of each route
+      ...candidates.map((c) => {
+        const codes = c.segments.map((s) => s.lineCode);
+        return new Set(codes.slice(1, -1));
+      }),
+      // All middle lines combined
+      new Set(allMiddle),
+    ];
+
+    for (const excludeSet of exclusionSets) {
+      if (candidates.length >= MAX_ROUTES * 2) break;
+      if (excludeSet.size === 0) continue;
+      const key = [...excludeSet].sort().join(',');
+      if (processedExclusions.has(key)) continue;
+      processedExclusions.add(key);
+      addCandidate(await findRoute(fromStationId, toStationId, { excludeLines: excludeSet }));
     }
   }
 
-  // Label routes
-  if (routes.length > 1) {
-    let minTransfers = routes[0].route.totalTransfers;
-    let minIdx = 0;
-    for (let i = 1; i < routes.length; i++) {
-      if (routes[i].route.totalTransfers < minTransfers) {
-        minTransfers = routes[i].route.totalTransfers;
-        minIdx = i;
-      }
-    }
-    if (minIdx !== 0) {
-      routes[minIdx].label = 'Fewer transfers';
-    }
-    for (const r of routes) {
-      if (!r.label) r.label = 'Alternative';
-    }
-  }
+  // Sort by total duration and keep top N
+  candidates.sort((a, b) => a.totalDurationSeconds - b.totalDurationSeconds);
+  const topRoutes = candidates.slice(0, MAX_ROUTES);
 
-  return { found: true, routes };
+  return {
+    found: true,
+    routes: topRoutes.map((route, i) => ({
+      label: i === 0 ? 'Fastest' : `Option ${i + 1}`,
+      route,
+    })),
+  };
 }

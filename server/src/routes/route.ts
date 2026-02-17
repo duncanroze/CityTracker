@@ -34,6 +34,12 @@ router.get('/', async (req, res) => {
     })),
   );
 
+  // Re-sort by enriched duration and re-label
+  enrichedRoutes.sort((a, b) => a.route.totalDurationSeconds - b.route.totalDurationSeconds);
+  enrichedRoutes.forEach((r, i) => {
+    r.label = i === 0 ? 'Fastest' : `Option ${i + 1}`;
+  });
+
   res.json({ ...result, routes: enrichedRoutes });
 });
 
