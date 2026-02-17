@@ -1,10 +1,14 @@
+import { memo } from 'react';
 import type { LabeledRoute } from '../types';
+import type { DisruptionsMap } from '../hooks/useDisruptions';
 import LineBadge from './LineBadge';
+import { cn } from '@/lib/utils';
 
 interface RouteOptionCardProps {
   labeledRoute: LabeledRoute;
   selected: boolean;
   onClick: () => void;
+  disruptions?: DisruptionsMap;
 }
 
 function formatDuration(seconds: number): string {
@@ -12,45 +16,74 @@ function formatDuration(seconds: number): string {
   return `${mins} min`;
 }
 
-export default function RouteOptionCard({ labeledRoute, selected, onClick }: RouteOptionCardProps) {
+export default memo(function RouteOptionCard({ labeledRoute, selected, onClick, disruptions }: RouteOptionCardProps) {
   const { label, route } = labeledRoute;
 
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
+      className={cn(
+        'w-full text-left p-3 rounded-lg border bg-card text-card-foreground transition-all',
         selected
-          ? 'border-blue-500 bg-blue-50'
-          : 'border-gray-100 bg-white hover:border-gray-200'
-      }`}
+          ? 'ring-2 ring-primary/20 border-primary/40'
+          : 'border-border hover:border-primary/20'
+      )}
     >
-      <div className="flex items-center justify-between mb-2">
-        <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+      <div className="flex items-center justify-between mb-2.5">
+        <span className={cn(
+          'text-[11px] font-semibold px-2 py-0.5 rounded-full',
           label === 'Fastest'
-            ? 'bg-green-100 text-green-700'
-            : label === 'Fewer transfers'
-              ? 'bg-purple-100 text-purple-700'
-              : 'bg-gray-100 text-gray-600'
-        }`}>
-          {label}
+            ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+            : 'bg-muted text-muted-foreground'
+        )}>
+          {label === 'Fastest' ? 'Le plus rapide' : `Option ${label.replace('Option ', '')}`}
         </span>
-        <span className="text-sm font-semibold text-gray-900">
+        <span className="text-sm font-semibold">
           {formatDuration(route.totalDurationSeconds)}
         </span>
       </div>
-      <div className="flex items-center gap-1.5 flex-wrap">
+
+      {/* Proportional segment bar */}
+      <div className="flex items-stretch h-6 rounded-md overflow-hidden mb-2">
         {route.segments.map((seg, i) => (
-          <div key={i} className="flex items-center gap-1.5">
-            {i > 0 && <span className="text-gray-300 text-xs">&#8250;</span>}
-            <LineBadge code={seg.lineCode} color={seg.lineColor} textColor={seg.lineTextColor} />
+          <div
+            key={`${seg.lineCode}-${i}`}
+            className="flex items-center justify-center min-w-[28px] overflow-hidden"
+            style={{
+              flex: seg.durationSeconds,
+              backgroundColor: seg.lineColor,
+            }}
+          >
+            <span
+              className="text-[10px] font-bold leading-none px-1 truncate"
+              style={{ color: seg.lineTextColor || '#fff' }}
+            >
+              {seg.lineCode}
+            </span>
           </div>
         ))}
+      </div>
+
+      {/* Bottom: line badges + transfer count */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1">
+          {route.segments.map((seg, i) => (
+            <LineBadge
+              key={`${seg.lineCode}-${i}`}
+              code={seg.lineCode}
+              color={seg.lineColor}
+              textColor={seg.lineTextColor}
+              disruption={disruptions?.[seg.lineCode]?.severity}
+              size="sm"
+            />
+          ))}
+        </div>
         {route.totalTransfers > 0 && (
-          <span className="text-xs text-gray-400 ml-auto">
-            {route.totalTransfers} transfer{route.totalTransfers > 1 ? 's' : ''}
+          <span className="text-xs text-muted-foreground">
+            {route.totalTransfers} corresp.
           </span>
         )}
       </div>
     </button>
   );
-}
+});

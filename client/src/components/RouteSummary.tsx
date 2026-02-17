@@ -1,4 +1,6 @@
+import { Clock, MapPin, ArrowLeftRight } from 'lucide-react';
 import type { RouteResult } from '../types';
+import { Separator } from '@/components/ui/separator';
 
 function formatDuration(seconds: number): string {
   const mins = Math.round(seconds / 60);
@@ -12,27 +14,38 @@ interface RouteSummaryProps {
 export default function RouteSummary({ route }: RouteSummaryProps) {
   const totalWait = route.segments.reduce((sum, s) => sum + (s.waitTimeSeconds ?? 0), 0);
   const hasWaitData = totalWait > 0;
-  const estimatedTotal = route.totalDurationSeconds + totalWait;
 
   return (
-    <div className="flex items-center gap-6 text-sm">
-      <div>
-        <span className="text-gray-500">Duration</span>
-        <p className="font-semibold text-gray-900">{formatDuration(hasWaitData ? estimatedTotal : route.totalDurationSeconds)}</p>
-        {hasWaitData && (
-          <p className="text-xs text-gray-400">
-            dont ~{Math.ceil(totalWait / 60)} min d'attente
-          </p>
-        )}
+    <>
+      <div className="grid grid-cols-3 gap-4 text-center">
+        <div>
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Durée</span>
+          </div>
+          <p className="text-lg font-semibold">{formatDuration(route.totalDurationSeconds)}</p>
+          {hasWaitData && (
+            <p className="text-[11px] text-muted-foreground">
+              dont ~{Math.ceil(totalWait / 60)} min d'attente
+            </p>
+          )}
+        </div>
+        <div>
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <MapPin className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Stations</span>
+          </div>
+          <p className="text-lg font-semibold">{route.totalStations}</p>
+        </div>
+        <div>
+          <div className="flex items-center justify-center gap-1.5 mb-1">
+            <ArrowLeftRight className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">Corresp.</span>
+          </div>
+          <p className="text-lg font-semibold">{route.totalTransfers}</p>
+        </div>
       </div>
-      <div>
-        <span className="text-gray-500">Stations</span>
-        <p className="font-semibold text-gray-900">{route.totalStations}</p>
-      </div>
-      <div>
-        <span className="text-gray-500">Transfers</span>
-        <p className="font-semibold text-gray-900">{route.totalTransfers}</p>
-      </div>
-    </div>
+      <Separator />
+    </>
   );
 }

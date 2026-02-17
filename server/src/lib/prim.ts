@@ -3,7 +3,9 @@
  * Uses SIRI Lite stop-monitoring to get next departures at a stop.
  */
 
-const PRIM_API_KEY = process.env["PRIM_API_KEY"] ?? "";
+import { env } from "../env.js";
+
+const PRIM_API_KEY = env.PRIM_API_KEY;
 const PRIM_BASE_URL = "https://prim.iledefrance-mobilites.fr/marketplace";
 
 const CACHE_TTL_MS = 30_000; // 30 seconds

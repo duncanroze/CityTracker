@@ -10,37 +10,48 @@ const querySchema = z.object({
   to: z.string().min(1, 'to is required'),
 });
 
-router.get('/', async (req, res) => {
-  const parsed = querySchema.safeParse(req.query);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.flatten().fieldErrors });
-    return;
+router.get('/', async (req, res, next) => {
+  try {
+    const parsed = querySchema.safeParse(req.query);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.flatten().fieldErrors });
+      return;
+    }
+
+    const { from, to } = parsed.data;
+
+    if (from === to) {
+      res.status(400).json({ error: 'Origin and destination must be different' });
+      return;
+    }
+
+    const result = await findRoutes(from, to);
+
+    // Enrich routes with real-time departure data — individual failures fall back to un-enriched route
+    const enrichedRoutes = await Promise.all(
+      result.routes.map(async (labeled) => {
+        try {
+          return {
+            ...labeled,
+            route: await enrichRouteWithDepartures(labeled.route),
+          };
+        } catch (err) {
+          console.warn('Failed to enrich route:', (err as Error).message);
+          return labeled;
+        }
+      }),
+    );
+
+    // Re-sort by enriched duration and re-label
+    enrichedRoutes.sort((a, b) => a.route.totalDurationSeconds - b.route.totalDurationSeconds);
+    enrichedRoutes.forEach((r, i) => {
+      r.label = i === 0 ? 'Fastest' : `Option ${i + 1}`;
+    });
+
+    res.json({ ...result, routes: enrichedRoutes });
+  } catch (err) {
+    next(err);
   }
-
-  const { from, to } = parsed.data;
-
-  if (from === to) {
-    res.status(400).json({ error: 'Origin and destination must be different' });
-    return;
-  }
-
-  const result = await findRoutes(from, to);
-
-  // Enrich routes with real-time departure data (non-blocking: failures are silent)
-  const enrichedRoutes = await Promise.all(
-    result.routes.map(async (labeled) => ({
-      ...labeled,
-      route: await enrichRouteWithDepartures(labeled.route),
-    })),
-  );
-
-  // Re-sort by enriched duration and re-label
-  enrichedRoutes.sort((a, b) => a.route.totalDurationSeconds - b.route.totalDurationSeconds);
-  enrichedRoutes.forEach((r, i) => {
-    r.label = i === 0 ? 'Fastest' : `Option ${i + 1}`;
-  });
-
-  res.json({ ...result, routes: enrichedRoutes });
 });
 
 export default router;

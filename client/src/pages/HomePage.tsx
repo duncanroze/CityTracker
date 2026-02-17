@@ -1,20 +1,37 @@
 import { useStations } from '../hooks/useStations';
 import { useRoute } from '../hooks/useRoute';
+import { useDisruptions } from '../hooks/useDisruptions';
 import RouteForm from '../components/RouteForm';
 import RouteOptions from '../components/RouteOptions';
 import RouteMap from '../components/RouteMap';
 import RouteResultView from '../components/RouteResult';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function HomePage() {
   const { stations, loading: stationsLoading, error: stationsError } = useStations();
   const { routes, selectedRoute, selectedIndex, selectRoute, loading: routeLoading, error: routeError, search } = useRoute();
+  const disruptions = useDisruptions();
 
   if (stationsLoading) {
-    return <p className="text-center text-gray-500 py-12">Loading stations...</p>;
+    return (
+      <div className="space-y-4">
+        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-4 w-16" />
+          <Skeleton className="h-9 w-full" />
+          <Skeleton className="h-9 w-full" />
+        </div>
+      </div>
+    );
   }
 
   if (stationsError) {
-    return <p className="text-center text-red-500 py-12">Error: {stationsError}</p>;
+    return (
+      <div className="rounded-lg bg-destructive/10 text-destructive text-sm px-4 py-3">
+        Erreur : {stationsError}
+      </div>
+    );
   }
 
   return (
@@ -22,19 +39,19 @@ export default function HomePage() {
       <RouteForm stations={stations} loading={routeLoading} onSearch={search} />
 
       {routeError && (
-        <div className="bg-red-50 text-red-700 text-sm rounded-lg px-4 py-3">
+        <div className="rounded-lg bg-destructive/10 text-destructive text-sm px-4 py-3">
           {routeError}
         </div>
       )}
 
       {routes.length > 1 && (
-        <RouteOptions routes={routes} selectedIndex={selectedIndex} onSelect={selectRoute} />
+        <RouteOptions routes={routes} selectedIndex={selectedIndex} onSelect={selectRoute} disruptions={disruptions} />
       )}
 
       {selectedRoute && (
         <>
           <RouteMap route={selectedRoute.route} />
-          <RouteResultView route={selectedRoute.route} />
+          <RouteResultView route={selectedRoute.route} disruptions={disruptions} />
         </>
       )}
     </div>

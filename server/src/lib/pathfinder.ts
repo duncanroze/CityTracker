@@ -367,7 +367,7 @@ export async function findRoutes(
     }
   }
 
-  // Sort by total duration and keep top N
+  // Sort strictly by duration and keep top N
   candidates.sort((a, b) => a.totalDurationSeconds - b.totalDurationSeconds);
   const topRoutes = candidates.slice(0, MAX_ROUTES);
 

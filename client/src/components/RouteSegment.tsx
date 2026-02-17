@@ -1,12 +1,15 @@
 import { useState } from 'react';
+import { AlertTriangle, ChevronDown } from 'lucide-react';
 import type { RouteSegment as RouteSegmentType } from '../types';
+import type { LineDisruption } from '../hooks/useDisruptions';
 import LineBadge from './LineBadge';
 
 interface RouteSegmentProps {
   segment: RouteSegmentType;
+  disruption?: LineDisruption;
 }
 
-export default function RouteSegment({ segment }: RouteSegmentProps) {
+export default function RouteSegment({ segment, disruption }: RouteSegmentProps) {
   const [expanded, setExpanded] = useState(false);
   const { stops } = segment;
   const collapsible = stops.length > 4;
@@ -23,19 +26,36 @@ export default function RouteSegment({ segment }: RouteSegmentProps) {
 
       {/* Header */}
       <div className="flex items-center gap-2 pb-2">
-        <LineBadge code={segment.lineCode} color={segment.lineColor} textColor={segment.lineTextColor} />
-        <span className="text-sm text-gray-600">{segment.lineName}</span>
-        <span className="text-xs text-gray-400 ml-auto">{Math.round(segment.durationSeconds / 60)} min</span>
+        <LineBadge code={segment.lineCode} color={segment.lineColor} textColor={segment.lineTextColor} disruption={disruption?.severity} />
+        <span className="text-sm text-muted-foreground">{segment.lineName}</span>
+        <span className="text-xs text-muted-foreground ml-auto">{Math.round(segment.durationSeconds / 60)} min</span>
       </div>
+
+      {/* Disruption alert */}
+      {disruption && (
+        <div className={`flex items-center gap-1.5 pb-2 text-xs rounded-md px-2 py-1.5 mb-1 ${
+          disruption.severity === 'interrupted'
+            ? 'bg-destructive/10 text-destructive'
+            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+        }`}>
+          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+          <span className="font-medium">
+            {disruption.severity === 'interrupted' ? 'Trafic interrompu' : 'Trafic perturbé'}
+          </span>
+          {disruption.message && (
+            <span className="text-muted-foreground truncate">— {disruption.message}</span>
+          )}
+        </div>
+      )}
 
       {/* Real-time departure info */}
       {segment.nextDepartures && segment.nextDepartures.length > 0 && (
         <div className="flex items-center gap-2 pb-2 text-xs">
-          <span className="text-emerald-600 font-medium">
+          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
             Prochain départ : {new Date(segment.nextDepartures[0]).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
           </span>
           {segment.waitTimeSeconds != null && segment.waitTimeSeconds > 0 && (
-            <span className="text-gray-400">
+            <span className="text-muted-foreground">
               (attente ~{Math.ceil(segment.waitTimeSeconds / 60)} min)
             </span>
           )}
@@ -55,13 +75,16 @@ export default function RouteSegment({ segment }: RouteSegmentProps) {
         ) : (
           <button
             onClick={() => setExpanded(true)}
-            className="flex items-center gap-2 py-1.5 pl-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+            aria-label={`Afficher ${middleStops.length} arrêts intermédiaires`}
+            aria-expanded={false}
+            className="flex items-center gap-2 py-1.5 pl-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <span
               className="w-2 h-2 rounded-full border-2 shrink-0"
               style={{ borderColor: segment.lineColor }}
             />
-            <span>{middleStops.length} stops</span>
+            <span>{middleStops.length} arrêts</span>
+            <ChevronDown className="w-3 h-3" />
           </button>
         )}
 
@@ -85,7 +108,7 @@ function StopDot({ name, color, filled }: { name: string; color: string; filled:
             : { border: '2px solid', borderColor: color }
         }
       />
-      <span className={`text-sm ${filled ? 'font-medium text-gray-900' : 'text-gray-500'}`}>{name}</span>
+      <span className={`text-sm ${filled ? 'font-medium' : 'text-muted-foreground'}`}>{name}</span>
     </div>
   );
 }

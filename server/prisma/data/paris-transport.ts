@@ -378,6 +378,7 @@ export const stations: StationData[] = [
   { name: "Issy — Val de Seine", slug: "issy-val-de-seine", latitude: 48.8244, longitude: 2.2598, isAccessible: true, municipality: "Issy-les-Moulineaux" },
   { name: "Les Moulineaux", slug: "les-moulineaux", latitude: 48.8308, longitude: 2.2615, isAccessible: true, municipality: "Issy-les-Moulineaux" },
   { name: "Pont du Garigliano", slug: "pont-du-garigliano", latitude: 48.8391, longitude: 2.271, isAccessible: true },
+  { name: "Javel", slug: "javel", latitude: 48.8460, longitude: 2.2761, isAccessible: true },
   { name: "Porte d'Italie", slug: "porte-d-italie", latitude: 48.8198, longitude: 2.36, isAccessible: true },
 ];
 
@@ -799,7 +800,9 @@ export const lineStopSequences: LineStopSequence[] = [
     { stationSlug: "robinson", travelTimeToNext: null },
   ]},
   { lineCode: "RER-C", stops: [
-    { stationSlug: "versailles-chateau-rive-gauche", travelTimeToNext: 600 },
+    { stationSlug: "versailles-chateau-rive-gauche", travelTimeToNext: 1500 },
+    { stationSlug: "pont-du-garigliano", travelTimeToNext: 90 },
+    { stationSlug: "javel", travelTimeToNext: 90 },
     { stationSlug: "champ-de-mars-tour-eiffel", travelTimeToNext: 120 },
     { stationSlug: "invalides", travelTimeToNext: 90 },
     { stationSlug: "musee-d-orsay", travelTimeToNext: 90 },
@@ -978,6 +981,15 @@ export const connectionPairs: ConnectionPair[] = [
   { lineCodeA: "M5",  stationSlugA: "gare-d-austerlitz", lineCodeB: "RER-C", stationSlugB: "gare-d-austerlitz", walkingTime: 240 },
   { lineCodeA: "M10", stationSlugA: "gare-d-austerlitz", lineCodeB: "RER-C", stationSlugB: "gare-d-austerlitz", walkingTime: 240 },
 
+  // ── Bibliothèque François Mitterrand (M14, RER-C) ─────────────────
+  { lineCodeA: "M14",  stationSlugA: "bibliotheque-francois-mitterrand", lineCodeB: "RER-C", stationSlugB: "bibliotheque-francois-mitterrand", walkingTime: 240 },
+
+  // ── Javel (RER-C) ↔ Javel — André Citroën (M10) ────────────────────
+  { lineCodeA: "M10", stationSlugA: "javel-andre-citroen", lineCodeB: "RER-C", stationSlugB: "javel", walkingTime: 240 },
+
+  // ── Pont du Garigliano (RER-C, T3A) ───────────────────────────────
+  { lineCodeA: "RER-C", stationSlugA: "pont-du-garigliano", lineCodeB: "T3A", stationSlugB: "pont-du-garigliano", walkingTime: 180 },
+
   // ── Stalingrad (M2, M5, M7) ─ M2/M5 close, M7 further ─────────────
   { lineCodeA: "M2", stationSlugA: "stalingrad", lineCodeB: "M5", stationSlugB: "stalingrad", walkingTime: 122 },
   { lineCodeA: "M2", stationSlugA: "stalingrad", lineCodeB: "M7", stationSlugB: "stalingrad", walkingTime: 258 },
@@ -1036,5 +1048,12 @@ export const connectionPairs: ConnectionPair[] = [
   { lineCodeA: "M4",  stationSlugA: "les-halles",   lineCodeB: "RER-A", stationSlugB: "chatelet-les-halles",     walkingTime: 180 },
   { lineCodeA: "M14", stationSlugA: "saint-lazare",  lineCodeB: "RER-E", stationSlugB: "haussmann-saint-lazare",  walkingTime: 300 },
   { lineCodeA: "M4",  stationSlugA: "saint-michel",  lineCodeB: "RER-B", stationSlugB: "saint-michel-notre-dame", walkingTime: 180 },
+  { lineCodeA: "M4",  stationSlugA: "saint-michel",  lineCodeB: "RER-C", stationSlugB: "saint-michel-notre-dame", walkingTime: 180 },
+  { lineCodeA: "RER-B", stationSlugA: "saint-michel-notre-dame", lineCodeB: "RER-C", stationSlugB: "saint-michel-notre-dame", walkingTime: 120 },
   { lineCodeA: "M4",  stationSlugA: "gare-du-nord",  lineCodeB: "RER-E", stationSlugB: "magenta",                walkingTime: 240 },
+
+  // ── Porte de Versailles (M12, T2, T3A) ────────────────────────────
+  { lineCodeA: "M12", stationSlugA: "porte-de-versailles", lineCodeB: "T2",  stationSlugB: "porte-de-versailles", walkingTime: 240 },
+  { lineCodeA: "M12", stationSlugA: "porte-de-versailles", lineCodeB: "T3A", stationSlugB: "porte-de-versailles", walkingTime: 240 },
+  { lineCodeA: "T2",  stationSlugA: "porte-de-versailles", lineCodeB: "T3A", stationSlugB: "porte-de-versailles", walkingTime: 180 },
 ];
