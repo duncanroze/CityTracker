@@ -25,11 +25,19 @@ export default function RouteSegment({ segment, disruption }: RouteSegmentProps)
       />
 
       {/* Header */}
-      <div className="flex items-center gap-2 pb-2">
+      <div className="flex items-center gap-2 pb-1">
         <LineBadge code={segment.lineCode} color={segment.lineColor} textColor={segment.lineTextColor} disruption={disruption?.severity} />
         <span className="text-sm text-muted-foreground">{segment.lineName}</span>
         <span className="text-xs text-muted-foreground ml-auto">{Math.round(segment.durationSeconds / 60)} min</span>
       </div>
+
+      {/* Direction */}
+      {segment.direction && (
+        <div className="flex items-center gap-1.5 pb-2 text-xs text-muted-foreground">
+          <span>Direction</span>
+          <span className="font-medium text-foreground">{segment.direction}</span>
+        </div>
+      )}
 
       {/* Disruption alert */}
       {disruption && (

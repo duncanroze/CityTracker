@@ -31,18 +31,18 @@ export default function RouteForm({ stations, loading, onSearch }: RouteFormProp
   return (
     <Card className="py-4 gap-0">
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-3">
+        <form onSubmit={handleSubmit} className="space-y-2">
           <StationPicker label="Départ" stations={stations} selected={from} onSelect={setFrom} />
 
-          <div className="flex justify-center">
+          <div className="flex justify-center -my-1">
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
+              size="icon-xs"
               onClick={handleSwap}
-              title="Swap stations"
+              title="Inverser les stations"
             >
-              <ArrowUpDown className="w-4 h-4" />
+              <ArrowUpDown className="w-3.5 h-3.5" />
             </Button>
           </div>
 

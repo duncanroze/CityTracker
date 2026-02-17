@@ -6,6 +6,7 @@ import stationsRouter from './routes/stations.js';
 import routeRouter from './routes/route.js';
 import departuresRouter from './routes/departures.js';
 import disruptionsRouter from './routes/disruptions.js';
+import linesRouter from './routes/lines.js';
 
 const app = express();
 
@@ -24,6 +25,7 @@ app.use('/api/stations', stationsRouter);
 app.use('/api/route', routeRouter);
 app.use('/api/departures', departuresRouter);
 app.use('/api/disruptions', disruptionsRouter);
+app.use('/api/lines', linesRouter);
 
 // Global error handler
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

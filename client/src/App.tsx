@@ -1,6 +1,9 @@
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import Layout from './components/Layout';
-import HomePage from './pages/HomePage';
+import ItinerairePage from './pages/ItinerairePage';
+import LignesPage from './pages/LignesPage';
+import LigneDetailPage from './pages/LigneDetailPage';
+import TraficPage from './pages/TraficPage';
 
 const router = createBrowserRouter([
   {
@@ -9,7 +12,19 @@ const router = createBrowserRouter([
     children: [
       {
         index: true,
-        element: <HomePage />,
+        element: <ItinerairePage />,
+      },
+      {
+        path: 'lignes',
+        element: <LignesPage />,
+      },
+      {
+        path: 'lignes/:lineCode',
+        element: <LigneDetailPage />,
+      },
+      {
+        path: 'trafic',
+        element: <TraficPage />,
       },
     ],
   },

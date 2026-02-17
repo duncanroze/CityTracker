@@ -1,6 +1,6 @@
 import type { LabeledRoute } from '../types';
 import type { DisruptionsMap } from '../hooks/useDisruptions';
-import RouteOptionCard from './RouteOptionCard';
+import RouteOptionBubbles from './RouteOptionBubbles';
 
 interface RouteOptionsProps {
   routes: LabeledRoute[];
@@ -17,7 +17,7 @@ export default function RouteOptions({ routes, selectedIndex, onSelect, disrupti
       <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Itinéraires</h2>
       <div className="grid gap-2">
         {routes.map((lr, i) => (
-          <RouteOptionCard
+          <RouteOptionBubbles
             key={lr.route.segments.map(s => s.lineCode).join('-')}
             labeledRoute={lr}
             selected={i === selectedIndex}

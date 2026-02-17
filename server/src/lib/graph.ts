@@ -21,10 +21,16 @@ export interface LineStopInfo {
   lng: number;
 }
 
+export interface LineTermini {
+  first: string; // Station name at position 0
+  last: string;  // Station name at highest position
+}
+
 export interface TransportGraph {
   adjacency: Map<string, Edge[]>;
   stationToLineStops: Map<string, string[]>;
   lineStopInfo: Map<string, LineStopInfo>;
+  lineTermini: Map<string, LineTermini>;
 }
 
 let cachedGraph: TransportGraph | null = null;
@@ -121,5 +127,17 @@ async function buildGraph(): Promise<TransportGraph> {
     }
   }
 
-  return { adjacency, stationToLineStops, lineStopInfo };
+  // Build line termini map (first and last station of each line)
+  const lineTermini = new Map<string, LineTermini>();
+  for (const [lineId, stops] of lineStopsByLine) {
+    stops.sort((a, b) => a.position - b.position);
+    if (stops.length > 0) {
+      lineTermini.set(lineId, {
+        first: stops[0].station.name,
+        last: stops[stops.length - 1].station.name,
+      });
+    }
+  }
+
+  return { adjacency, stationToLineStops, lineStopInfo, lineTermini };
 }

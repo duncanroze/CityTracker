@@ -1,16 +1,32 @@
+import { useEffect } from 'react';
 import { useStations } from '../hooks/useStations';
 import { useRoute } from '../hooks/useRoute';
 import { useDisruptions } from '../hooks/useDisruptions';
+import { useMapContext } from '../contexts/MapContext';
 import RouteForm from '../components/RouteForm';
 import RouteOptions from '../components/RouteOptions';
-import RouteMap from '../components/RouteMap';
 import RouteResultView from '../components/RouteResult';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export default function HomePage() {
+export default function ItinerairePage() {
   const { stations, loading: stationsLoading, error: stationsError } = useStations();
   const { routes, selectedRoute, selectedIndex, selectRoute, loading: routeLoading, error: routeError, search } = useRoute();
   const disruptions = useDisruptions();
+  const { setRouteOverlay, clearOverlay } = useMapContext();
+
+  // Push selected route to the map
+  useEffect(() => {
+    if (selectedRoute) {
+      setRouteOverlay(selectedRoute.route);
+    } else {
+      clearOverlay();
+    }
+  }, [selectedRoute, setRouteOverlay, clearOverlay]);
+
+  // Clear overlay on unmount
+  useEffect(() => {
+    return () => clearOverlay();
+  }, [clearOverlay]);
 
   if (stationsLoading) {
     return (
@@ -45,14 +61,16 @@ export default function HomePage() {
       )}
 
       {routes.length > 1 && (
-        <RouteOptions routes={routes} selectedIndex={selectedIndex} onSelect={selectRoute} disruptions={disruptions} />
+        <RouteOptions
+          routes={routes}
+          selectedIndex={selectedIndex}
+          onSelect={selectRoute}
+          disruptions={disruptions}
+        />
       )}
 
       {selectedRoute && (
-        <>
-          <RouteMap route={selectedRoute.route} />
-          <RouteResultView route={selectedRoute.route} disruptions={disruptions} />
-        </>
+        <RouteResultView route={selectedRoute.route} disruptions={disruptions} />
       )}
     </div>
   );

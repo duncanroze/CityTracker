@@ -24,6 +24,7 @@ export interface RouteSegment {
   lineColor: string;
   lineTextColor: string;
   transportType: string;
+  direction: string;
   stops: RouteStop[];
   durationSeconds: number;
   nextDepartures?: string[];
@@ -54,4 +55,23 @@ export interface LabeledRoute {
 export interface MultiRouteResult {
   found: boolean;
   routes: LabeledRoute[];
+}
+
+export interface LineStation {
+  id: string;
+  name: string;
+  slug: string;
+  latitude: number;
+  longitude: number;
+  position: number;
+}
+
+export interface LineWithStations {
+  id: string;
+  code: string;
+  name: string;
+  transportType: string;
+  color: string;
+  textColor: string;
+  stations: LineStation[];
 }

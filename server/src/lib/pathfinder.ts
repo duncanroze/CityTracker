@@ -12,6 +12,7 @@ export interface RouteSegment {
   lineColor: string;
   lineTextColor: string;
   transportType: string;
+  direction: string;
   stops: { stationName: string; stationId: string; lat: number; lng: number }[];
   durationSeconds: number;
   nextDepartures?: string[];
@@ -277,12 +278,26 @@ function pushSegment(
   }
 
   const first = stops[0];
+  const last = stops[stops.length - 1];
+
+  // Determine direction (terminus) based on travel direction
+  const termini = graph.lineTermini.get(first.lineId);
+  let direction = '';
+  if (termini && stops.length >= 2) {
+    // If positions increase, we're heading toward "last" terminus; otherwise toward "first"
+    const goingForward = last.position > first.position;
+    direction = goingForward ? termini.last : termini.first;
+  } else if (termini) {
+    direction = termini.last;
+  }
+
   segments.push({
     lineCode: first.lineCode,
     lineName: first.lineName,
     lineColor: first.lineColor,
     lineTextColor: first.lineTextColor,
     transportType: first.transportType,
+    direction,
     stops: stops.map((s) => ({ stationName: s.stationName, stationId: s.stationId, lat: s.lat, lng: s.lng })),
     durationSeconds: duration,
   });
