@@ -4,113 +4,116 @@ Paris public transport routing application (Metro, RER, Tram).
 
 ## Architecture
 
-- **Monorepo** with pnpm workspaces: `server/` + `client/`
-- **Server**: Express 5 + Prisma 6 + PostgreSQL + Zod + TypeScript
-- **Client**: React 19 + React Router 7 + React Leaflet + Tailwind CSS v4 + Vite + shadcn/ui
-- **DB**: PostgreSQL via Docker Compose (`docker-compose.yml`)
-- **Docker**: Multi-stage `Dockerfile` at root with `server` and `client` targets
+- **Next.js 15** App Router — single deployable app (frontend + API)
+- **Prisma 6** + PostgreSQL (Neon on Vercel, Docker locally)
+- **React 19** + Tailwind CSS v4 + shadcn/ui + React Leaflet
+- **Vercel** serverless deployment (free tier compatible)
 
 ## Key Commands
 
 ```bash
-# Root
-pnpm install              # install all deps
-pnpm dev                  # run client + server in parallel
+# Development
+pnpm install              # install deps (runs prisma generate via postinstall)
+pnpm dev                  # next dev on http://localhost:3000
 
-# Server
-cd server
-pnpm dev                  # tsx watch src/index.ts
-pnpm db:migrate           # prisma migrate dev
-pnpm db:seed              # prisma db seed
+# Database
 pnpm db:generate          # prisma generate
+pnpm db:migrate           # prisma migrate dev
+pnpm db:seed              # prisma db seed (seed.ts + seed-idfm.ts)
 
-# Client
-cd client
-pnpm dev                  # vite dev server
+# Build & Production
+pnpm build                # next build
+pnpm start                # next start
 
-# Docker (runs all 3 services: postgres, server, client)
-docker compose up --build
+# Docker (PostgreSQL only, for local dev)
+docker compose up -d
 ```
 
 ## Project Structure
 
 ```
-server/
-  src/
-    index.ts              # Express entry, routes, error handler, graceful shutdown
-    env.ts                # Zod env validation (DATABASE_URL, PORT, PRIM_API_KEY)
-    lib/
-      prisma.ts           # Prisma client singleton
-      graph.ts            # Transport graph (adjacency list from DB) + line termini
-      pathfinder.ts       # Dijkstra routing with transfer penalties + direction info
-      prim.ts             # PRIM IDFM real-time API client (SIRI Lite)
-      departures.ts       # Route enrichment with real-time departures & wait times
-      headways.ts         # Per-line headway tracking (from PRIM data, with defaults)
-      disruptions.ts      # Line disruption status from PRIM general-message API
-    routes/
-      stations.ts         # GET /api/stations
-      route.ts            # GET /api/route?from=&to=
-      lines.ts            # GET /api/lines (all lines with ordered stations)
-      departures.ts       # GET /api/departures?lineStopId=
-      disruptions.ts      # GET /api/disruptions
-  prisma/
-    schema.prisma         # DB schema
-    seed.ts               # Main seed script
-    seed-idfm.ts          # IDFM stop mapping seed
-    data/
-      paris-transport.ts  # Static transport data (lines, stations, stops)
-      idfm-mapping.ts     # Line code → IDFM ID mapping
+app/
+  layout.tsx                # Root layout (html, body, metadata, globals.css)
+  globals.css               # Tailwind v4 + shadcn/ui CSS variables + Leaflet overrides
+  (main)/
+    layout.tsx              # Sidebar + Map layout wrapper
+    page.tsx                # Itinéraire — route planning
+    lignes/
+      page.tsx              # All lines grid
+      [lineCode]/
+        page.tsx            # Line detail with station timeline
+    trafic/
+      page.tsx              # Disruption dashboard
+  api/
+    stations/route.ts       # GET /api/stations
+    route/route.ts          # GET /api/route?from=&to=
+    lines/route.ts          # GET /api/lines
+    departures/route.ts     # GET /api/departures?lineStopId=
+    disruptions/route.ts    # GET /api/disruptions
 
-client/
-  src/
-    types.ts              # Shared TypeScript interfaces
-    App.tsx               # Router setup (nested routes under Layout)
-    lib/
-      utils.ts            # cn() utility (clsx + tailwind-merge)
-    contexts/
-      MapContext.tsx       # Persistent map state (overlay + dark mode) via React Context
-    components/
-      ui/                 # shadcn/ui primitives (card, badge, button, input, scroll-area, separator, skeleton, tooltip)
-      Layout.tsx          # App shell: sidebar + map split, dark mode toggle, nav
-      AppMap.tsx           # Persistent Leaflet map with overlays + station labels
-      AppNav.tsx           # Tab navigation (Itinéraire, Lignes, Infos trafic)
-      RouteForm.tsx        # Origin/destination form
-      StationPicker.tsx    # Station autocomplete input
-      RouteOptions.tsx     # Route alternatives list
-      RouteOptionBubbles.tsx # Metro-style circle bubble cards for route options
-      RouteResult.tsx      # Detailed route view
-      RouteSummary.tsx     # Duration/stations/transfers grid
-      RouteSegment.tsx     # Vertical timeline with stops + direction
-      TransferIndicator.tsx # Walking transfer between segments
-      LineBadge.tsx        # Line badge with disruption indicator
-    pages/
-      ItinerairePage.tsx   # Route planning (form + results in sidebar, map overlay)
-      LignesPage.tsx       # All lines grid with station counts + disruption dots
-      LigneDetailPage.tsx  # Single line detail with station timeline + map overlay
-      TraficPage.tsx       # Disruption dashboard for all lines
-    hooks/
-      useRoute.ts          # Route search hook
-      useStations.ts       # Station list hook
-      useLines.ts          # Lines list hook
-      useDisruptions.ts    # Disruption polling hook
+components/
+  ui/                       # shadcn/ui primitives
+  Layout.tsx                # App shell: sidebar + map split, dark mode toggle, nav
+  AppMap.tsx                # Leaflet map (loaded via next/dynamic, ssr: false)
+  AppNav.tsx                # Tab navigation (next/link + usePathname)
+  RouteForm.tsx             # Origin/destination form
+  StationPicker.tsx         # Station autocomplete
+  RouteOptions.tsx          # Route alternatives list
+  RouteOptionBubbles.tsx    # Metro-style bubble cards
+  RouteResult.tsx           # Detailed route view
+  RouteSummary.tsx          # Duration/stations/transfers grid
+  RouteSegment.tsx          # Vertical timeline with stops
+  TransferIndicator.tsx     # Walking transfer indicator
+  LineBadge.tsx             # Line badge with disruption dot
+
+contexts/
+  MapContext.tsx            # Map overlay state + dark mode (React Context)
+
+hooks/
+  useRoute.ts               # Route search (fetch /api/route)
+  useStations.ts            # Station list (fetch /api/stations)
+  useLines.ts               # Lines list (fetch /api/lines)
+  useDisruptions.ts         # Disruption polling (fetch /api/disruptions)
+
+lib/
+  utils.ts                  # cn() utility (clsx + tailwind-merge)
+  server/
+    prisma.ts               # Prisma client singleton (globalThis pattern)
+    env.ts                  # Zod env validation (DATABASE_URL, PRIM_API_KEY)
+    graph.ts                # Transport graph (adjacency list from DB) + line termini
+    pathfinder.ts           # Dijkstra routing with transfer penalties + direction
+    prim.ts                 # PRIM IDFM real-time API client (SIRI Lite)
+    departures.ts           # Route enrichment with real-time departures & wait times
+    headways.ts             # Per-line headway tracking (from PRIM data, with defaults)
+    disruptions.ts          # Line disruption status from PRIM general-message API
+
+types/
+  index.ts                  # Shared TypeScript interfaces
+
+prisma/
+  schema.prisma             # DB schema (with directUrl for Neon)
+  seed.ts                   # Main seed script
+  seed-idfm.ts             # IDFM stop mapping seed
+  data/
+    paris-transport.ts      # Static transport data
+    idfm-mapping.ts         # Line code → IDFM ID mapping
 ```
 
 ## Key Patterns
 
-- ESM throughout (`"type": "module"`, `.js` extensions in imports)
-- Prisma singleton in `server/src/lib/prisma.ts`
-- Transport graph cached globally in `graph.ts`, includes `lineTermini` for direction info
-- Server types defined in `pathfinder.ts`, mirrored in `client/src/types.ts`
-- Env vars validated via Zod in `env.ts`: `DATABASE_URL`, `PORT`, `PRIM_API_KEY` (optional)
-- Global error handler middleware in `index.ts`, all routes use try-catch + `next(err)`
-- Graceful shutdown on SIGTERM/SIGINT with `prisma.$disconnect()`
+- Next.js App Router with `'use client'` directives for interactive components
+- API Route Handlers (`export async function GET(request: NextRequest)`) replace Express routes
+- Prisma singleton via `globalThis` (works in serverless)
+- Transport graph cached at module level, rebuilds on cold start (~1s for ~500 nodes)
+- `@/*` path alias resolves from project root
+- React Leaflet loaded via `next/dynamic` with `ssr: false` (Leaflet requires `window`)
 
 ## UI Layout
 
 - **Sidebar + Map split**: 380px fixed sidebar on the left, persistent Leaflet map fills the rest
-- **Tab navigation**: 3 tabs in header (Itinéraire, Lignes, Infos trafic) via React Router nested routes
+- **Tab navigation**: 3 tabs (Itinéraire, Lignes, Infos trafic) via `next/link` + `usePathname()`
 - **MapContext**: React Context manages map overlay state and dark mode; pages push overlays, map consumes them
-- **Layout pattern**: `Layout` renders `MapProvider`, `LayoutInner` consumes context (split needed because provider and consumer can't be the same component)
+- **Layout pattern**: `Layout` renders `MapProvider`, `LayoutInner` consumes context
 
 ## UI Design System
 
@@ -119,25 +122,22 @@ client/
 - Dark mode state managed in MapContext, persisted in localStorage, toggleable from header
 - Tailwind CSS v4 with `@theme inline {}` and `@custom-variant dark`
 - Map uses CartoDB Light/Dark tiles, TileLayer keyed by theme to force remount on toggle
-- Station name labels: permanent at zoom >= 13, hover-only below; styled with transparent Leaflet tooltip overrides
-- Route option cards: metro-style circle bubbles (rounded-full for metro, rounded-md for RER) with line colors
-- Line codes stripped of transport prefix in bubbles: M1→1, RER-A→A, T1 kept as-is
+- Route option cards: metro-style circle bubbles with line colors
 
 ## Real-time Departures & Wait Times
 
 - PRIM (IDFM SIRI Lite) provides real-time next departures per stop
 - `departures.ts` enriches routes sequentially: arrival time propagates through segments
 - Wait time per segment = time between arrival at station and next real-time departure
-- Fallback: when PRIM has no future departures for the estimated arrival time, uses `headway/2` from `headways.ts`
+- Fallback: when PRIM has no future departures, uses `headway/2` from `headways.ts`
 - `totalDurationSeconds` includes travel + walking transfers + wait times at each boarding
-- Enrichment failures are handled per-route (individual failures fall back to un-enriched route)
 
 ## Disruptions
 
-- `lib/disruptions.ts` fetches line disruption status from PRIM general-message API
+- `lib/server/disruptions.ts` fetches line disruption status from PRIM general-message API
 - Severity levels: `ok`, `disrupted`, `interrupted`
 - Results cached for 1 minute
-- Client polls via `useDisruptions` hook, displays inline alerts in route segments and on Lignes/Trafic pages
+- Client polls via `useDisruptions` hook
 
 ## Database Models
 
@@ -147,10 +147,20 @@ client/
 - **Connection**: Walking transfers between line stops
 - **IdfmStopMapping**: Maps LineStop → IDFM stop ID for real-time API
 
-## Docker
+## Environment Variables
 
-- Single multi-stage `Dockerfile` at root: `base` → `server` / `client` targets
-- `docker-compose.yml` runs 3 services: `postgres`, `server`, `client`
-- Volume mounts for hot-reload: `./server/src`, `./client/src`
-- Client Vite proxy target configured via `VITE_API_URL` env var
-- Server depends on postgres healthcheck, client depends on server
+| Variable | Description | Required |
+|---|---|---|
+| `DATABASE_URL` | PostgreSQL connection string (Neon pooler URL) | Yes |
+| `DIRECT_URL` | PostgreSQL direct URL (for Prisma migrations) | Yes |
+| `PRIM_API_KEY` | IDFM PRIM API key for real-time data | Optional (degrades gracefully) |
+
+## Deployment
+
+- **Vercel project**: `citytracker` (team: `duncans-projects-1257a09e`)
+- All env vars (`DATABASE_URL`, `DIRECT_URL`, `PRIM_API_KEY`) are set for production, preview, and development
+- Auto-detected as Next.js; `postinstall` script runs `prisma generate` during build
+- **Neon**: Free tier PostgreSQL. `DATABASE_URL` = pooler URL, `DIRECT_URL` = direct URL for migrations
+- **Local dev**: `docker compose up -d` for PostgreSQL, `pnpm dev` for Next.js
+- **Docker**: `docker-compose.yml` runs PostgreSQL only (no app services needed)
+- **Vercel CLI**: `vercel` (linked via `.vercel/project.json`), `vercel env ls` to list env vars
