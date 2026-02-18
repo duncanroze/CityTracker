@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
 import { Moon, Sun, Train } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,18 @@ import { MapProvider, useMapContext } from '@/contexts/MapContext';
 import AppNav from '@/components/AppNav';
 import MobileDrawer from '@/components/MobileDrawer';
 
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 767.98px)');
+    setIsMobile(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return isMobile;
+}
+
 const AppMap = dynamic(() => import('@/components/AppMap'), {
   ssr: false,
   loading: () => <div className="absolute inset-0 bg-muted animate-pulse" />,
@@ -16,6 +28,7 @@ const AppMap = dynamic(() => import('@/components/AppMap'), {
 
 function LayoutInner({ children }: { children: ReactNode }) {
   const { dark, setDark } = useMapContext();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -64,12 +77,12 @@ function LayoutInner({ children }: { children: ReactNode }) {
           <AppMap />
         </div>
 
-        {/* Mobile bottom sheet */}
-        <div className="md:hidden">
+        {/* Mobile bottom sheet — only rendered on mobile to prevent portal leaking on desktop */}
+        {isMobile && (
           <MobileDrawer>
             {children}
           </MobileDrawer>
-        </div>
+        )}
       </div>
     </div>
   );
