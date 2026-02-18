@@ -11,7 +11,7 @@ const navItems = [
   { href: '/trafic', label: 'Infos trafic', icon: AlertTriangle, exact: true },
 ];
 
-export default function AppNav() {
+export default function AppNav({ showLabels }: { showLabels?: boolean } = {}) {
   const pathname = usePathname();
 
   return (
@@ -30,7 +30,7 @@ export default function AppNav() {
             )}
           >
             <Icon className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">{label}</span>
+            <span className={showLabels ? '' : 'hidden sm:inline'}>{label}</span>
           </Link>
         );
       })}

@@ -116,6 +116,12 @@ export default memo(function RouteOptionBubbles({
 
       {/* Circle chain */}
       <div className="flex items-center justify-center">
+        {route.walkingFrom && (
+          <>
+            <Footprints className="w-4 h-4 text-muted-foreground" />
+            <div className="w-2 h-0.5 bg-border rounded-full mx-0.5" />
+          </>
+        )}
         {route.segments.map((seg, i) => (
           <Fragment key={`${seg.lineCode}-${i}`}>
             {i > 0 && <TransferConnector />}
@@ -128,6 +134,12 @@ export default memo(function RouteOptionBubbles({
             />
           </Fragment>
         ))}
+        {route.walkingTo && (
+          <>
+            <div className="w-2 h-0.5 bg-border rounded-full mx-0.5" />
+            <Footprints className="w-4 h-4 text-muted-foreground" />
+          </>
+        )}
       </div>
 
       {/* Info row: station counts + transfers */}

@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 import dynamic from 'next/dynamic';
-import { Moon, Sun, Train, Map, PanelLeft } from 'lucide-react';
+import { Moon, Sun, Train } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { MapProvider, useMapContext } from '@/contexts/MapContext';
 import AppNav from '@/components/AppNav';
+import MobileDrawer from '@/components/MobileDrawer';
 
 const AppMap = dynamic(() => import('@/components/AppMap'), {
   ssr: false,
@@ -15,7 +16,6 @@ const AppMap = dynamic(() => import('@/components/AppMap'), {
 
 function LayoutInner({ children }: { children: ReactNode }) {
   const { dark, setDark } = useMapContext();
-  const [showMap, setShowMap] = useState(false);
 
   useEffect(() => {
     document.documentElement.classList.toggle('dark', dark);
@@ -32,19 +32,12 @@ function LayoutInner({ children }: { children: ReactNode }) {
               <Train className="w-5 h-5 text-muted-foreground" />
               <h1 className="text-base font-semibold hidden sm:block">CityTracker</h1>
             </div>
-            <AppNav />
+            {/* Desktop nav only — mobile nav is inside the drawer */}
+            <div className="hidden md:block">
+              <AppNav />
+            </div>
           </div>
           <div className="flex items-center gap-1">
-            {/* Mobile map toggle */}
-            <Button
-              variant="ghost"
-              size="icon-sm"
-              className="md:hidden"
-              onClick={() => setShowMap(!showMap)}
-              aria-label={showMap ? 'Afficher le panneau' : 'Afficher la carte'}
-            >
-              {showMap ? <PanelLeft className="w-4 h-4" /> : <Map className="w-4 h-4" />}
-            </Button>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -59,16 +52,23 @@ function LayoutInner({ children }: { children: ReactNode }) {
 
       {/* Main content area */}
       <div className="flex-1 flex relative overflow-hidden">
-        {/* Sidebar panel */}
-        <aside className={`w-full md:w-[380px] shrink-0 border-r border-border bg-background z-10 overflow-y-auto ${showMap ? 'hidden md:block' : ''}`}>
+        {/* Desktop sidebar */}
+        <aside className="hidden md:block w-[380px] shrink-0 border-r border-border bg-background z-10 overflow-y-auto">
           <div className="p-4">
             {children}
           </div>
         </aside>
 
-        {/* Map area */}
-        <div className={`flex-1 relative ${!showMap ? 'hidden md:block' : ''}`}>
+        {/* Map — always visible */}
+        <div className="flex-1 relative">
           <AppMap />
+        </div>
+
+        {/* Mobile bottom sheet */}
+        <div className="md:hidden">
+          <MobileDrawer>
+            {children}
+          </MobileDrawer>
         </div>
       </div>
     </div>

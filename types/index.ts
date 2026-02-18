@@ -38,6 +38,18 @@ export interface Transfer {
   walkingTimeSeconds: number;
 }
 
+export interface WalkingLeg {
+  address: string;
+  lat: number;
+  lng: number;
+  stationName: string;
+  stationId: string;
+  stationLat: number;
+  stationLng: number;
+  durationSeconds: number;
+  distanceMeters: number;
+}
+
 export interface RouteResult {
   found: boolean;
   totalDurationSeconds: number;
@@ -45,6 +57,8 @@ export interface RouteResult {
   totalTransfers: number;
   segments: RouteSegment[];
   transfers: Transfer[];
+  walkingFrom?: WalkingLeg;
+  walkingTo?: WalkingLeg;
 }
 
 export interface LabeledRoute {
@@ -56,6 +70,16 @@ export interface MultiRouteResult {
   found: boolean;
   routes: LabeledRoute[];
 }
+
+export interface GeocodeResult {
+  address: string;
+  lat: number;
+  lng: number;
+}
+
+export type PickerSelection =
+  | { type: 'station'; station: Station }
+  | { type: 'address'; address: string; lat: number; lng: number };
 
 export interface LineStation {
   id: string;

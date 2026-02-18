@@ -24,9 +24,10 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const [overlay, setOverlay] = useState<MapOverlay>({ type: 'none' });
   const [dark, setDark] = useState(() => {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('theme') === 'dark';
+      const stored = localStorage.getItem('theme');
+      return stored ? stored === 'dark' : true;
     }
-    return false;
+    return true;
   });
 
   const setRouteOverlay = useCallback((route: RouteResult | null) => {

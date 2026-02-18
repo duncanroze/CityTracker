@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { ArrowUpDown, Search } from 'lucide-react';
-import type { Station } from '@/types';
+import type { Station, PickerSelection } from '@/types';
 import StationPicker from './StationPicker';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -10,12 +10,12 @@ import { Button } from '@/components/ui/button';
 interface RouteFormProps {
   stations: Station[];
   loading: boolean;
-  onSearch: (fromId: string, toId: string) => void;
+  onSearch: (from: PickerSelection, to: PickerSelection) => void;
 }
 
 export default function RouteForm({ stations, loading, onSearch }: RouteFormProps) {
-  const [from, setFrom] = useState<Station | null>(null);
-  const [to, setTo] = useState<Station | null>(null);
+  const [from, setFrom] = useState<PickerSelection | null>(null);
+  const [to, setTo] = useState<PickerSelection | null>(null);
 
   const handleSwap = useCallback(() => {
     setFrom(to);
@@ -25,7 +25,7 @@ export default function RouteForm({ stations, loading, onSearch }: RouteFormProp
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
-      if (from && to) onSearch(from.id, to.id);
+      if (from && to) onSearch(from, to);
     },
     [from, to, onSearch],
   );

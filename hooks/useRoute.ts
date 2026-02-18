@@ -1,5 +1,27 @@
 import { useState, useCallback, useRef } from 'react';
-import type { LabeledRoute, MultiRouteResult } from '@/types';
+import type { LabeledRoute, MultiRouteResult, PickerSelection } from '@/types';
+
+function buildSearchParams(from: PickerSelection, to: PickerSelection): URLSearchParams {
+  const params = new URLSearchParams();
+
+  if (from.type === 'station') {
+    params.set('from', from.station.id);
+  } else {
+    params.set('fromLat', String(from.lat));
+    params.set('fromLng', String(from.lng));
+    params.set('fromAddress', from.address);
+  }
+
+  if (to.type === 'station') {
+    params.set('to', to.station.id);
+  } else {
+    params.set('toLat', String(to.lat));
+    params.set('toLng', String(to.lng));
+    params.set('toAddress', to.address);
+  }
+
+  return params;
+}
 
 export function useRoute() {
   const [routes, setRoutes] = useState<LabeledRoute[]>([]);
@@ -8,7 +30,7 @@ export function useRoute() {
   const [error, setError] = useState<string | null>(null);
   const controllerRef = useRef<AbortController | null>(null);
 
-  const search = useCallback(async (fromId: string, toId: string) => {
+  const search = useCallback(async (from: PickerSelection, to: PickerSelection) => {
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
@@ -19,8 +41,9 @@ export function useRoute() {
     setSelectedIndex(0);
 
     try {
+      const params = buildSearchParams(from, to);
       const res = await fetch(
-        `/api/route?from=${encodeURIComponent(fromId)}&to=${encodeURIComponent(toId)}`,
+        `/api/route?${params.toString()}`,
         { signal: controller.signal },
       );
       if (!res.ok) {

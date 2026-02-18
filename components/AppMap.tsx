@@ -38,6 +38,13 @@ function MapController({ onZoomChange }: { onZoomChange: (zoom: number) => void 
           points.push([stop.lat, stop.lng]);
         }
       }
+      // Include walking leg endpoints in bounds
+      if (overlay.route.walkingFrom) {
+        points.push([overlay.route.walkingFrom.lat, overlay.route.walkingFrom.lng]);
+      }
+      if (overlay.route.walkingTo) {
+        points.push([overlay.route.walkingTo.lat, overlay.route.walkingTo.lng]);
+      }
     } else if (overlay.type === 'line' && overlay.line) {
       for (const station of overlay.line.stations) {
         points.push([station.latitude, station.longitude]);
@@ -99,17 +106,44 @@ export default function AppMap() {
       });
     }
 
+    // Walking legs
+    const walkingLines: { from: LatLngTuple; to: LatLngTuple; label: string }[] = [];
+    let walkFromPin: { position: LatLngTuple; name: string } | null = null;
+    let walkToPin: { position: LatLngTuple; name: string } | null = null;
+
+    if (route.walkingFrom) {
+      const wf = route.walkingFrom;
+      walkFromPin = { position: [wf.lat, wf.lng], name: wf.address.split(',')[0] };
+      walkingLines.push({
+        from: [wf.lat, wf.lng],
+        to: [wf.stationLat, wf.stationLng],
+        label: `${Math.round(wf.durationSeconds / 60)} min`,
+      });
+    }
+    if (route.walkingTo) {
+      const wt = route.walkingTo;
+      walkToPin = { position: [wt.lat, wt.lng], name: wt.address.split(',')[0] };
+      walkingLines.push({
+        from: [wt.stationLat, wt.stationLng],
+        to: [wt.lat, wt.lng],
+        label: `${Math.round(wt.durationSeconds / 60)} min`,
+      });
+    }
+
+    // Origin/destination: use address pin if walking, otherwise first/last station
     const allPoints: LatLngTuple[] = [];
     for (const seg of route.segments) {
       for (const stop of seg.stops) {
         allPoints.push([stop.lat, stop.lng]);
       }
     }
+    if (walkFromPin) allPoints.push(walkFromPin.position);
+    if (walkToPin) allPoints.push(walkToPin.position);
 
-    const origin = { position: allPoints[0], name: stops[0].name };
-    const destination = { position: allPoints[allPoints.length - 1], name: stops[stops.length - 1].name };
+    const origin = walkFromPin ?? { position: allPoints[0], name: stops[0].name };
+    const destination = walkToPin ?? { position: allPoints[allPoints.length - 1], name: stops[stops.length - 1].name };
 
-    return { segments, stops, transfers, origin, destination };
+    return { segments, stops, transfers, walkingLines, walkFromPin, walkToPin, origin, destination, allPoints };
   }, [overlay.type, overlay.route]);
 
   // Line overlay
@@ -161,6 +195,14 @@ export default function AppMap() {
                 key={`t-${i}`}
                 positions={[t.from, t.to]}
                 pathOptions={{ color: '#9ca3af', weight: 3, dashArray: '8, 8', opacity: 0.7 }}
+              />
+            ))}
+            {/* Walking leg lines */}
+            {routeData.walkingLines.map((wl, i) => (
+              <Polyline
+                key={`walk-${i}`}
+                positions={[wl.from, wl.to]}
+                pathOptions={{ color: '#6b7280', weight: 3, dashArray: '6, 8', opacity: 0.7 }}
               />
             ))}
             {/* Stop markers with labels */}

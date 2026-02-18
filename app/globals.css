@@ -157,6 +157,20 @@
   display: none;
 }
 
+/* Vaul drawer — keep map interactive behind the sheet */
+[data-vaul-overlay] {
+  pointer-events: none !important;
+  background: transparent !important;
+}
+
+/* Hide vaul portal elements on desktop (portal escapes md:hidden) */
+@media (min-width: 768px) {
+  [data-vaul-overlay],
+  [data-vaul-drawer] {
+    display: none !important;
+  }
+}
+
 /* Sidebar scrollbar styling */
 aside {
   scrollbar-width: thin;
