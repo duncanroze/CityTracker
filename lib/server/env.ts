@@ -1,8 +1,8 @@
 import { z } from 'zod';
 
 const envSchema = z.object({
-  DATABASE_URL: z.string().url(),
-  DIRECT_URL: z.string().url().optional(),
+  POSTGRES_PRISMA_URL: z.string().url(),
+  POSTGRES_URL_NON_POOLING: z.string().url().optional(),
   PRIM_API_KEY: z.string().optional().default(''),
 });
 
