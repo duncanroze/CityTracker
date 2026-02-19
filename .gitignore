@@ -2,13 +2,18 @@ node_modules/
 dist/
 build/
 
+# Next.js
+.next/
+out/
+.vercel
+
 # env
 .env
 .env.local
 .env.*.local
 
 # Prisma
-server/prisma/generated/
+prisma/generated/
 
 # Claude Code
 .claude/
