@@ -86,6 +86,7 @@ export default function StationPicker({ label, stations, selected, onSelect }: S
         <Input
           ref={inputRef}
           type="text"
+          autoComplete="off"
           placeholder="Rechercher une station..."
           value={selected ? selected.name : query}
           onChange={(e) => {
