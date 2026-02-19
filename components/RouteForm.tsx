@@ -36,7 +36,7 @@ export default function RouteForm({ stations, loading, onSearch }: RouteFormProp
         <form onSubmit={handleSubmit} className="space-y-2">
           <StationPicker label="Départ" stations={stations} selected={from} onSelect={setFrom} />
 
-          <div className="flex justify-center -my-1">
+          <div className="flex justify-center mt-1 -mb-1">
             <Button
               type="button"
               variant="ghost"
