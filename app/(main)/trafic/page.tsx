@@ -100,6 +100,7 @@ export default function TraficPage() {
 
   const metro = lines.filter((l) => l.transportType === 'METRO');
   const rer = lines.filter((l) => l.transportType === 'RER');
+  const transilien = lines.filter((l) => l.transportType === 'TRANSILIEN');
   const tram = lines.filter((l) => l.transportType === 'TRAM');
 
   // Sort: disrupted/interrupted first within each group
@@ -120,6 +121,7 @@ export default function TraficPage() {
   const sections = [
     { title: 'Métro', lines: [...metro].sort(sortByDisruption) },
     { title: 'RER', lines: [...rer].sort(sortByDisruption) },
+    { title: 'Transilien', lines: [...transilien].sort(sortByDisruption) },
     { title: 'Tramway', lines: [...tram].sort(sortByDisruption) },
   ];
 

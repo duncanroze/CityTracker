@@ -36,7 +36,7 @@ function LineCircle({
   transportType: string;
   disruption?: 'disrupted' | 'interrupted' | null;
 }) {
-  const isRER = transportType === 'RER';
+  const isRectangle = transportType === 'RER' || transportType === 'TRANSILIEN';
   const display = shortCode(code, transportType);
 
   return (
@@ -44,7 +44,7 @@ function LineCircle({
       <span
         className={cn(
           'inline-flex items-center justify-center font-bold leading-none shrink-0 shadow-sm',
-          isRER ? 'w-9 h-7 rounded-md text-[12px]' : 'w-8 h-8 rounded-full text-[13px]'
+          isRectangle ? 'w-9 h-7 rounded-md text-[12px]' : 'w-8 h-8 rounded-full text-[13px]'
         )}
         style={{
           backgroundColor: color,

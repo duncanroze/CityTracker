@@ -1,10 +1,10 @@
 # CityTracker
 
-Paris public transport routing application (Metro, RER, Tram).
+Paris public transport routing application (Metro, RER, Tram, Transilien).
 
 ## Architecture
 
-- **Next.js 15** App Router — single deployable app (frontend + API)
+- **Next.js 16** App Router — single deployable app (frontend + API)
 - **Prisma 6** + PostgreSQL (Neon on Vercel, Docker locally)
 - **React 19** + Tailwind CSS v4 + shadcn/ui + React Leaflet
 - **Vercel** serverless deployment (free tier compatible)
@@ -104,7 +104,7 @@ prisma/
 - Next.js App Router with `'use client'` directives for interactive components
 - API Route Handlers (`export async function GET(request: NextRequest)`) replace Express routes
 - Prisma singleton via `globalThis` (works in serverless)
-- Transport graph cached at module level, rebuilds on cold start (~1s for ~500 nodes)
+- Transport graph cached at module level, rebuilds on cold start (~1s for ~600 nodes)
 - `@/*` path alias resolves from project root
 - React Leaflet loaded via `next/dynamic` with `ssr: false` (Leaflet requires `window`)
 
@@ -122,7 +122,7 @@ prisma/
 - Dark mode state managed in MapContext, persisted in localStorage, toggleable from header
 - Tailwind CSS v4 with `@theme inline {}` and `@custom-variant dark`
 - Map uses CartoDB Light/Dark tiles, TileLayer keyed by theme to force remount on toggle
-- Route option cards: metro-style circle bubbles with line colors
+- Route option cards: metro-style circle bubbles with line colors; RER/Transilien use rounded rectangles
 
 ## Real-time Departures & Wait Times
 
@@ -141,7 +141,7 @@ prisma/
 
 ## Database Models
 
-- **Line**: Transport lines (M1-M14, RER-A/B/C/D/E, T1-T3A)
+- **Line**: Transport lines (M1-M14, RER-A/B/C/D/E, T1-T3A, Transilien H/J/K/L/N/P/R/U)
 - **Station**: Physical stations with coordinates
 - **LineStop**: Junction of line + station (position, travelTimeToNext)
 - **Connection**: Walking transfers between line stops
@@ -160,7 +160,7 @@ prisma/
 - **Vercel project**: `citytracker` (team: `duncans-projects-1257a09e`)
 - All env vars (`DATABASE_URL`, `DIRECT_URL`, `PRIM_API_KEY`) are set for production, preview, and development
 - Auto-detected as Next.js; `postinstall` script runs `prisma generate` during build
-- **Neon**: Free tier PostgreSQL. `DATABASE_URL` = pooler URL, `DIRECT_URL` = direct URL for migrations
-- **Local dev**: `docker compose up -d` for PostgreSQL, `pnpm dev` for Next.js
-- **Docker**: `docker-compose.yml` runs PostgreSQL only (no app services needed)
+- **Neon**: Vercel-integrated Neon PostgreSQL. `DATABASE_URL` = pooler URL, `DIRECT_URL` = direct URL for migrations
+- **Local dev**: `pnpm dev` for Next.js (connects to Neon directly via .env)
+- **Docker**: `docker-compose.yml` available for local PostgreSQL (optional)
 - **Vercel CLI**: `vercel` (linked via `.vercel/project.json`), `vercel env ls` to list env vars

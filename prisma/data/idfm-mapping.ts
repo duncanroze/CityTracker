@@ -26,4 +26,12 @@ export const idfmLineMapping: Record<string, string> = {
   T1: "C01389",
   T2: "C01390",
   T3A: "C01391",
+  H: "C01737",
+  J: "C01739",
+  K: "C01738",
+  L: "C01740",
+  N: "C01736",
+  P: "C01730",
+  R: "C01731",
+  U: "C01741",
 };

@@ -28,8 +28,8 @@ function normalize(str: string): string {
 
 function shortAddress(address: string): string {
   const parts = address.split(',');
-  // Nominatim format: "12, Rue de Rivoli, Paris, ..." — combine number + street
-  if (parts.length >= 2 && /^\d+\s*$/.test(parts[0])) {
+  // Nominatim format: "12, Rue de Rivoli, Paris, ..." or "20 bis, Rue Balard, ..."
+  if (parts.length >= 2 && /^\d+/.test(parts[0].trim())) {
     return `${parts[0].trim()} ${parts[1].trim()}`;
   }
   return parts[0].trim();
