@@ -15,11 +15,12 @@ async function main() {
     async (tx) => {
       // ── 1. Delete in reverse FK order ──────────────────────────────
       const delConn = await tx.connection.deleteMany();
+      const delMapping = await tx.idfmStopMapping.deleteMany();
       const delStop = await tx.lineStop.deleteMany();
       const delSta = await tx.station.deleteMany();
       const delLine = await tx.line.deleteMany();
       console.log(
-        `  Cleared: ${delLine.count} lines, ${delSta.count} stations, ${delStop.count} stops, ${delConn.count} connections`,
+        `  Cleared: ${delLine.count} lines, ${delSta.count} stations, ${delStop.count} stops, ${delConn.count} connections, ${delMapping.count} mappings`,
       );
 
       // ── 2. Create Lines ────────────────────────────────────────────
@@ -56,12 +57,17 @@ async function main() {
       console.log(`  Stations:    ${stationMap.size}`);
 
       // ── 4. Create LineStops ────────────────────────────────────────
+      // Lines with branches have multiple stop sequences.
+      // Track the next position per line to ensure unique positions.
       const lineStopMap = new Map<string, string>(); // "code:slug" → id
+      const linePositionCounter = new Map<string, number>(); // lineCode → next position
       let totalStops = 0;
 
       for (const seq of lineStopSequences) {
         const lineId = lineMap.get(seq.lineCode);
         if (!lineId) throw new Error(`Unknown line code: ${seq.lineCode}`);
+
+        let pos = linePositionCounter.get(seq.lineCode) ?? 0;
 
         for (let i = 0; i < seq.stops.length; i++) {
           const stop = seq.stops[i];
@@ -75,13 +81,16 @@ async function main() {
             data: {
               lineId,
               stationId,
-              position: i,
+              position: pos,
               travelTimeToNext: stop.travelTimeToNext,
             },
           });
           lineStopMap.set(`${seq.lineCode}:${stop.stationSlug}`, created.id);
           totalStops++;
+          pos++;
         }
+
+        linePositionCounter.set(seq.lineCode, pos);
       }
       console.log(`  LineStops:   ${totalStops}`);
 
