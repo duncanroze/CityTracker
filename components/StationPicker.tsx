@@ -27,7 +27,12 @@ function normalize(str: string): string {
 }
 
 function shortAddress(address: string): string {
-  return address.split(',')[0].trim();
+  const parts = address.split(',');
+  // Nominatim format: "12, Rue de Rivoli, Paris, ..." — combine number + street
+  if (parts.length >= 2 && /^\d+\s*$/.test(parts[0])) {
+    return `${parts[0].trim()} ${parts[1].trim()}`;
+  }
+  return parts[0].trim();
 }
 
 export default function StationPicker({ label, stations, selected, onSelect }: StationPickerProps) {
