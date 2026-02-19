@@ -115,14 +115,19 @@ async function buildGraph(): Promise<TransportGraph> {
     }
   }
 
-  // Build transfer edges from connections (already bidirectional in DB)
+  // Build transfer/branch edges from connections (already bidirectional in DB)
   for (const conn of connections) {
     const edges = adjacency.get(conn.fromLineStopId);
     if (edges) {
+      // Same-line connections are branch junctions (travel edges, no boarding penalty).
+      // Cross-line connections are walking transfers.
+      const fromInfo = lineStopInfo.get(conn.fromLineStopId);
+      const toInfo = lineStopInfo.get(conn.toLineStopId);
+      const isSameLine = fromInfo && toInfo && fromInfo.lineId === toInfo.lineId;
       edges.push({
         toLineStopId: conn.toLineStopId,
         weight: conn.walkingTime,
-        type: 'transfer',
+        type: isSameLine ? 'travel' : 'transfer',
       });
     }
   }

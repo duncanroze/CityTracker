@@ -11,6 +11,7 @@ datasource db {
 enum TransportType {
   METRO
   RER
+  TRANSILIEN
   TRAM
   BUS
 }

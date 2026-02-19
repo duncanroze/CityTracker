@@ -6,9 +6,10 @@
 
 // Reasonable off-peak defaults (seconds)
 const DEFAULT_HEADWAYS: Record<string, number> = {
-  metro: 150,   // ~2.5 min
-  rer: 600,     // ~10 min
-  tram: 420,    // ~7 min
+  metro: 150,       // ~2.5 min
+  rer: 600,         // ~10 min
+  transilien: 900,  // ~15 min
+  tram: 420,        // ~7 min
 };
 
 interface CachedHeadway {
