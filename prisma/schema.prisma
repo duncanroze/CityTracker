@@ -57,7 +57,7 @@ model LineStop {
   idfmMapping      IdfmStopMapping?
 
   @@unique([lineId, position])
-  @@unique([lineId, stationId])
+  @@index([lineId, stationId])
   @@index([stationId])
 }
 

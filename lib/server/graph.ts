@@ -31,6 +31,8 @@ export interface TransportGraph {
   stationToLineStops: Map<string, string[]>;
   lineStopInfo: Map<string, LineStopInfo>;
   lineTermini: Map<string, LineTermini>;
+  /** Per-branch termini for lines with branches (lineId → array of branch termini) */
+  branchTermini: Map<string, LineTermini[]>;
 }
 
 let cachedGraph: TransportGraph | null = null;
@@ -115,6 +117,38 @@ async function buildGraph(): Promise<TransportGraph> {
     }
   }
 
+  // Build branch junction edges: connect same-station stops on the same line
+  // (e.g. Nanterre-Prefecture appears on RER-A trunk and RER-A Cergy branch)
+  for (const [, stopIds] of stationToLineStops) {
+    if (stopIds.length < 2) continue;
+    // Group by lineId
+    const byLine = new Map<string, string[]>();
+    for (const stopId of stopIds) {
+      const info = lineStopInfo.get(stopId)!;
+      const group = byLine.get(info.lineId) ?? [];
+      group.push(stopId);
+      byLine.set(info.lineId, group);
+    }
+    // Connect stops on the same line at the same station with 0-weight travel edges
+    for (const [, sameLineStops] of byLine) {
+      if (sameLineStops.length < 2) continue;
+      for (let i = 0; i < sameLineStops.length; i++) {
+        for (let j = i + 1; j < sameLineStops.length; j++) {
+          adjacency.get(sameLineStops[i])!.push({
+            toLineStopId: sameLineStops[j],
+            weight: 0,
+            type: 'travel',
+          });
+          adjacency.get(sameLineStops[j])!.push({
+            toLineStopId: sameLineStops[i],
+            weight: 0,
+            type: 'travel',
+          });
+        }
+      }
+    }
+  }
+
   // Build transfer edges from connections (already bidirectional in DB)
   for (const conn of connections) {
     const edges = adjacency.get(conn.fromLineStopId);
@@ -129,15 +163,41 @@ async function buildGraph(): Promise<TransportGraph> {
 
   // Build line termini map (first and last station of each line)
   const lineTermini = new Map<string, LineTermini>();
+  const branchTermini = new Map<string, LineTermini[]>();
+
   for (const [lineId, stops] of lineStopsByLine) {
     stops.sort((a, b) => a.position - b.position);
-    if (stops.length > 0) {
-      lineTermini.set(lineId, {
-        first: stops[0].station.name,
-        last: stops[stops.length - 1].station.name,
-      });
+    if (stops.length === 0) continue;
+
+    // Global termini (first and last overall)
+    lineTermini.set(lineId, {
+      first: stops[0].station.name,
+      last: stops[stops.length - 1].station.name,
+    });
+
+    // Per-branch termini: split into branches by detecting position gaps > 1
+    const branches: typeof stops[] = [];
+    let currentBranch = [stops[0]];
+    for (let i = 1; i < stops.length; i++) {
+      if (stops[i].position - stops[i - 1].position > 1) {
+        branches.push(currentBranch);
+        currentBranch = [stops[i]];
+      } else {
+        currentBranch.push(stops[i]);
+      }
+    }
+    branches.push(currentBranch);
+
+    if (branches.length > 1) {
+      branchTermini.set(
+        lineId,
+        branches.map((b) => ({
+          first: b[0].station.name,
+          last: b[b.length - 1].station.name,
+        })),
+      );
     }
   }
 
-  return { adjacency, stationToLineStops, lineStopInfo, lineTermini };
+  return { adjacency, stationToLineStops, lineStopInfo, lineTermini, branchTermini };
 }

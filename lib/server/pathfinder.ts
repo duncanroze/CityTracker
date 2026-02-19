@@ -244,15 +244,42 @@ function pushSegment(
   const first = stops[0];
   const last = stops[stops.length - 1];
 
-  // Determine direction (terminus) based on travel direction
-  const termini = graph.lineTermini.get(first.lineId);
+  // Determine direction (terminus) based on travel direction.
+  // Use the last two stops to determine local direction — this handles cross-branch
+  // segments where positions jump at junctions (e.g., branch pos 109 → trunk pos 6).
   let direction = '';
-  if (termini && stops.length >= 2) {
-    // If positions increase, we're heading toward "last" terminus; otherwise toward "first"
-    const goingForward = last.position > first.position;
-    direction = goingForward ? termini.last : termini.first;
-  } else if (termini) {
-    direction = termini.last;
+  const goingForward = stops.length >= 2
+    ? stops[stops.length - 1].position > stops[stops.length - 2].position
+    : true;
+
+  // Try branch-specific termini first (for RER lines with branches)
+  const branches = graph.branchTermini.get(first.lineId);
+  if (branches && branches.length > 0 && stops.length >= 2) {
+    // Find which branch the last stop is on by matching its position range
+    const lastPos = last.position;
+    const matchedBranch = branches.find((b) => {
+      // A stop is on a branch if its name matches either terminus
+      return b.last === last.stationName || b.first === last.stationName;
+    });
+
+    if (matchedBranch) {
+      direction = goingForward ? matchedBranch.last : matchedBranch.first;
+    } else {
+      // Last stop is in the middle of a branch — find branch by checking all stops
+      direction = goingForward
+        ? branches.find((b) => b.last !== first.stationName)?.last ?? branches[0].last
+        : branches.find((b) => b.first !== first.stationName)?.first ?? branches[0].first;
+    }
+  }
+
+  // Fallback to global termini for lines without branches
+  if (!direction) {
+    const termini = graph.lineTermini.get(first.lineId);
+    if (termini && stops.length >= 2) {
+      direction = goingForward ? termini.last : termini.first;
+    } else if (termini) {
+      direction = termini.last;
+    }
   }
 
   segments.push({

@@ -63,6 +63,7 @@ async function main() {
         const lineId = lineMap.get(seq.lineCode);
         if (!lineId) throw new Error(`Unknown line code: ${seq.lineCode}`);
 
+        const offset = seq.positionOffset ?? 0;
         for (let i = 0; i < seq.stops.length; i++) {
           const stop = seq.stops[i];
           const stationId = stationMap.get(stop.stationSlug);
@@ -75,11 +76,15 @@ async function main() {
             data: {
               lineId,
               stationId,
-              position: i,
+              position: offset + i,
               travelTimeToNext: stop.travelTimeToNext,
             },
           });
-          lineStopMap.set(`${seq.lineCode}:${stop.stationSlug}`, created.id);
+          // For connection lookup: first entry per line:station wins
+          const key = `${seq.lineCode}:${stop.stationSlug}`;
+          if (!lineStopMap.has(key)) {
+            lineStopMap.set(key, created.id);
+          }
           totalStops++;
         }
       }

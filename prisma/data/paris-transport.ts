@@ -21,6 +21,7 @@ export interface StationData {
 
 export interface LineStopSequence {
   lineCode: string;
+  positionOffset?: number; // Starting position for branch sequences (default 0)
   stops: Array<{ stationSlug: string; travelTimeToNext: number | null }>;
 }
 
@@ -560,6 +561,121 @@ export const stations: StationData[] = [
 
   // ── Transilien U stations (Puteaux is new; others shared) ──────────
   { name: "Puteaux", slug: "puteaux", latitude: 48.8847, longitude: 2.2391, isAccessible: true, municipality: "Puteaux" },
+
+  // ── RER A branch stations ────────────────────────────────────────────
+  // A3 Cergy branch
+  { name: "Cergy-Le Haut", slug: "cergy-le-haut", latitude: 49.0486, longitude: 2.0110, isAccessible: true, municipality: "Cergy" },
+  { name: "Cergy-Saint-Christophe", slug: "cergy-saint-christophe", latitude: 49.0479, longitude: 2.0314, isAccessible: true, municipality: "Cergy" },
+  { name: "Cergy-Préfecture", slug: "cergy-prefecture", latitude: 49.0380, longitude: 2.0775, isAccessible: true, municipality: "Cergy" },
+  { name: "Neuville-Université", slug: "neuville-universite", latitude: 49.0159, longitude: 2.0780, isAccessible: true, municipality: "Neuville-sur-Oise" },
+  { name: "Conflans-Fin d'Oise", slug: "conflans-fin-d-oise", latitude: 49.0017, longitude: 2.0718, isAccessible: true, municipality: "Conflans-Sainte-Honorine" },
+  // Achères-Ville, Maisons-Laffitte shared with Transilien J
+  // A5 Poissy branch: Poissy shared with Transilien J
+  { name: "Achères-Grand Cormier", slug: "acheres-grand-cormier", latitude: 48.9569, longitude: 2.0867, isAccessible: true, municipality: "Achères" },
+  // A2 Boissy branch
+  { name: "Fontenay-sous-Bois", slug: "fontenay-sous-bois", latitude: 48.8538, longitude: 2.4705, isAccessible: true, municipality: "Fontenay-sous-Bois" },
+  { name: "Nogent-sur-Marne", slug: "nogent-sur-marne", latitude: 48.8374, longitude: 2.4846, isAccessible: true, municipality: "Nogent-sur-Marne" },
+  { name: "Joinville-le-Pont", slug: "joinville-le-pont", latitude: 48.8218, longitude: 2.4724, isAccessible: true, municipality: "Joinville-le-Pont" },
+  { name: "Saint-Maur — Créteil", slug: "saint-maur-creteil", latitude: 48.8087, longitude: 2.4721, isAccessible: true, municipality: "Saint-Maur-des-Fossés" },
+  { name: "Le Parc de Saint-Maur", slug: "le-parc-de-saint-maur", latitude: 48.8006, longitude: 2.4710, isAccessible: true, municipality: "Saint-Maur-des-Fossés" },
+  { name: "Champigny", slug: "champigny", latitude: 48.8177, longitude: 2.5156, isAccessible: true, municipality: "Champigny-sur-Marne" },
+  { name: "La Varenne — Chennevières", slug: "la-varenne-chennevieres", latitude: 48.8024, longitude: 2.5082, isAccessible: true, municipality: "Saint-Maur-des-Fossés" },
+  { name: "Sucy — Bonneuil", slug: "sucy-bonneuil", latitude: 48.7695, longitude: 2.5066, isAccessible: true, municipality: "Sucy-en-Brie" },
+  { name: "Boissy-Saint-Léger", slug: "boissy-saint-leger", latitude: 48.7522, longitude: 2.5076, isAccessible: true, municipality: "Boissy-Saint-Léger" },
+
+  // ── RER B branch stations ────────────────────────────────────────────
+  // B5 Mitry-Claye branch
+  // Sevran-Livry already exists from Transilien
+  { name: "Vert-Galant", slug: "vert-galant", latitude: 48.9495, longitude: 2.5592, isAccessible: true, municipality: "Villepinte" },
+  { name: "Villeparisis — Mitry-le-Neuf", slug: "villeparisis-mitry-le-neuf", latitude: 48.9617, longitude: 2.5938, isAccessible: true, municipality: "Villeparisis" },
+  // Mitry-Claye already exists from Transilien
+  // B4 Saint-Rémy branch
+  { name: "Parc de Sceaux", slug: "parc-de-sceaux", latitude: 48.7706, longitude: 2.3019, isAccessible: true, municipality: "Antony" },
+  { name: "La Croix de Berny", slug: "la-croix-de-berny", latitude: 48.7604, longitude: 2.3024, isAccessible: true, municipality: "Antony" },
+  // Antony already exists from Transilien
+  { name: "Fontaine Michalon", slug: "fontaine-michalon", latitude: 48.7401, longitude: 2.2921, isAccessible: true, municipality: "Antony" },
+  { name: "Les Baconnets", slug: "les-baconnets", latitude: 48.7347, longitude: 2.2854, isAccessible: true, municipality: "Antony" },
+  { name: "Massy — Verrières", slug: "massy-verrieres", latitude: 48.7273, longitude: 2.2734, isAccessible: true, municipality: "Massy" },
+  // Massy-Palaiseau already exists
+  { name: "Palaiseau", slug: "palaiseau", latitude: 48.7190, longitude: 2.2488, isAccessible: true, municipality: "Palaiseau" },
+  { name: "Palaiseau — Villebon", slug: "palaiseau-villebon", latitude: 48.7065, longitude: 2.2422, isAccessible: true, municipality: "Palaiseau" },
+  { name: "Lozère", slug: "lozere", latitude: 48.6961, longitude: 2.2376, isAccessible: true, municipality: "Palaiseau" },
+  { name: "Le Guichet", slug: "le-guichet", latitude: 48.7017, longitude: 2.2096, isAccessible: true, municipality: "Orsay" },
+  { name: "Orsay-Ville", slug: "orsay-ville", latitude: 48.6970, longitude: 2.1884, isAccessible: true, municipality: "Orsay" },
+  { name: "Bures-sur-Yvette", slug: "bures-sur-yvette", latitude: 48.6952, longitude: 2.1622, isAccessible: true, municipality: "Bures-sur-Yvette" },
+  { name: "La Hacquinière", slug: "la-hacquiniere", latitude: 48.6936, longitude: 2.1547, isAccessible: true, municipality: "Bures-sur-Yvette" },
+  { name: "Gif-sur-Yvette", slug: "gif-sur-yvette", latitude: 48.6989, longitude: 2.1351, isAccessible: true, municipality: "Gif-sur-Yvette" },
+  { name: "Courcelle-sur-Yvette", slug: "courcelle-sur-yvette", latitude: 48.7011, longitude: 2.1102, isAccessible: true, municipality: "Gif-sur-Yvette" },
+  { name: "Saint-Rémy-lès-Chevreuse", slug: "saint-remy-les-chevreuse", latitude: 48.7030, longitude: 2.0713, isAccessible: true, municipality: "Saint-Rémy-lès-Chevreuse" },
+
+  // ── RER C branch stations ────────────────────────────────────────────
+  // C1 Pontoise branch (stations not already shared with other lines)
+  { name: "Pont de l'Alma", slug: "pont-de-l-alma", latitude: 48.8619, longitude: 2.3012, isAccessible: true },
+  { name: "Avenue du Président Kennedy", slug: "av-du-president-kennedy", latitude: 48.8546, longitude: 2.2797, isAccessible: true },
+  { name: "Boulainvilliers", slug: "boulainvilliers", latitude: 48.8567, longitude: 2.2753, isAccessible: true },
+  { name: "Avenue Henri Martin", slug: "av-henri-martin", latitude: 48.8648, longitude: 2.2701, isAccessible: true },
+  { name: "Avenue Foch", slug: "av-foch", latitude: 48.8714, longitude: 2.2728, isAccessible: true },
+  { name: "Neuilly — Porte Maillot (RER C)", slug: "neuilly-porte-maillot-rerc", latitude: 48.8781, longitude: 2.2822, isAccessible: true },
+  { name: "Pereire — Levallois", slug: "pereire-levallois", latitude: 48.8848, longitude: 2.2987, isAccessible: true },
+  { name: "Porte de Clichy (RER C)", slug: "porte-de-clichy-rerc", latitude: 48.8942, longitude: 2.3134, isAccessible: true },
+  { name: "Saint-Ouen (RER C)", slug: "saint-ouen-rerc", latitude: 48.9063, longitude: 2.3269, isAccessible: true },
+  { name: "Les Grésillons", slug: "les-gresillons", latitude: 48.9206, longitude: 2.3121, isAccessible: true, municipality: "Gennevilliers" },
+  { name: "Gennevilliers", slug: "gennevilliers", latitude: 48.9271, longitude: 2.3027, isAccessible: true, municipality: "Gennevilliers" },
+  { name: "Épinay-sur-Seine", slug: "epinay-sur-seine", latitude: 48.9523, longitude: 2.3105, isAccessible: true, municipality: "Épinay-sur-Seine" },
+  { name: "Saint-Gratien", slug: "saint-gratien", latitude: 48.9623, longitude: 2.2908, isAccessible: true, municipality: "Saint-Gratien" },
+  // Ermont-Eaubonne, Cernay, Franconville, Montigny-Beauchamp, Pierrelaye, Saint-Ouen-l'Aumône, Pontoise shared with Transilien H
+  // C7 Saint-Quentin branch
+  // Versailles-Chantiers and Saint-Cyr already exist from Transilien
+  // Saint-Quentin-en-Yvelines already exists from Transilien
+  // C4 Dourdan branch
+  { name: "Savigny-sur-Orge", slug: "savigny-sur-orge", latitude: 48.6774, longitude: 2.3512, isAccessible: true, municipality: "Savigny-sur-Orge" },
+  { name: "Épinay-sur-Orge", slug: "epinay-sur-orge", latitude: 48.6700, longitude: 2.3320, isAccessible: true, municipality: "Épinay-sur-Orge" },
+  { name: "Sainte-Geneviève-des-Bois", slug: "sainte-genevieve-des-bois", latitude: 48.6430, longitude: 2.3248, isAccessible: true, municipality: "Sainte-Geneviève-des-Bois" },
+  { name: "Saint-Michel-sur-Orge", slug: "saint-michel-sur-orge", latitude: 48.6335, longitude: 2.3136, isAccessible: true, municipality: "Saint-Michel-sur-Orge" },
+  { name: "Brétigny", slug: "bretigny", latitude: 48.6106, longitude: 2.3064, isAccessible: true, municipality: "Brétigny-sur-Orge" },
+  { name: "La Norville — Saint-Germain-lès-Arpajon", slug: "la-norville", latitude: 48.5903, longitude: 2.2753, isAccessible: true, municipality: "La Norville" },
+  { name: "Arpajon", slug: "arpajon", latitude: 48.5888, longitude: 2.2476, isAccessible: true, municipality: "Arpajon" },
+  { name: "Égly", slug: "egly", latitude: 48.5813, longitude: 2.2224, isAccessible: true, municipality: "Égly" },
+  { name: "Breuillet — Bruyères-le-Châtel", slug: "breuillet-bruyeres", latitude: 48.5642, longitude: 2.1769, isAccessible: true, municipality: "Breuillet" },
+  { name: "Breuillet — Village", slug: "breuillet-village", latitude: 48.5598, longitude: 2.1634, isAccessible: true, municipality: "Breuillet" },
+  { name: "Saint-Chéron", slug: "saint-cheron", latitude: 48.5506, longitude: 2.1244, isAccessible: true, municipality: "Saint-Chéron" },
+  { name: "Sermaise", slug: "sermaise", latitude: 48.5410, longitude: 2.0765, isAccessible: true, municipality: "Sermaise" },
+  { name: "Dourdan", slug: "dourdan", latitude: 48.5285, longitude: 2.0141, isAccessible: true, municipality: "Dourdan" },
+  { name: "Dourdan-la-Forêt", slug: "dourdan-la-foret", latitude: 48.5371, longitude: 2.0044, isAccessible: true, municipality: "Dourdan" },
+  // C6 Étampes branch
+  { name: "Marolles-en-Hurepoix", slug: "marolles-en-hurepoix", latitude: 48.5736, longitude: 2.2964, isAccessible: true, municipality: "Marolles-en-Hurepoix" },
+  { name: "Bouray", slug: "bouray", latitude: 48.5357, longitude: 2.2977, isAccessible: true, municipality: "Bouray-sur-Juine" },
+  { name: "Lardy", slug: "lardy", latitude: 48.5178, longitude: 2.2761, isAccessible: true, municipality: "Lardy" },
+  { name: "Chamarande", slug: "chamarande", latitude: 48.5116, longitude: 2.2165, isAccessible: true, municipality: "Chamarande" },
+  { name: "Étréchy", slug: "etrechy", latitude: 48.4930, longitude: 2.1929, isAccessible: true, municipality: "Étréchy" },
+  { name: "Étampes", slug: "etampes", latitude: 48.4375, longitude: 2.1597, isAccessible: true, municipality: "Étampes" },
+  { name: "Saint-Martin-d'Étampes", slug: "saint-martin-d-etampes", latitude: 48.4292, longitude: 2.1450, isAccessible: true, municipality: "Étampes" },
+
+  // ── RER D branch stations ────────────────────────────────────────────
+  // D4 Corbeil branch
+  { name: "Vigneux-sur-Seine", slug: "vigneux-sur-seine", latitude: 48.7065, longitude: 2.4256, isAccessible: true, municipality: "Vigneux-sur-Seine" },
+  // Juvisy already exists from RER C
+  { name: "Viry-Châtillon", slug: "viry-chatillon", latitude: 48.6716, longitude: 2.3722, isAccessible: true, municipality: "Viry-Châtillon" },
+  { name: "Grigny-Centre", slug: "grigny-centre", latitude: 48.6564, longitude: 2.3874, isAccessible: true, municipality: "Grigny" },
+  { name: "Orangis — Bois de l'Épine", slug: "orangis-bois-de-l-epine", latitude: 48.6424, longitude: 2.4098, isAccessible: true, municipality: "Sainte-Geneviève-des-Bois" },
+  { name: "Évry-Courcouronnes", slug: "evry-courcouronnes", latitude: 48.6249, longitude: 2.4300, isAccessible: true, municipality: "Évry-Courcouronnes" },
+  { name: "Le Bras de Fer — Évry-Génopole", slug: "le-bras-de-fer", latitude: 48.6179, longitude: 2.4363, isAccessible: true, municipality: "Évry-Courcouronnes" },
+  { name: "Corbeil-Essonnes", slug: "corbeil-essonnes", latitude: 48.6102, longitude: 2.4817, isAccessible: true, municipality: "Corbeil-Essonnes" },
+
+  // ── RER E branch stations ────────────────────────────────────────────
+  // E4 Tournan branch
+  // Val de Fontenay already exists from RER A
+  { name: "Nogent — Le Perreux", slug: "nogent-le-perreux", latitude: 48.8405, longitude: 2.4834, isAccessible: true, municipality: "Nogent-sur-Marne" },
+  { name: "Les Boullereaux — Champigny", slug: "les-boullereaux-champigny", latitude: 48.8236, longitude: 2.4998, isAccessible: true, municipality: "Champigny-sur-Marne" },
+  { name: "Villiers-sur-Marne — Le Plessis-Trévise", slug: "villiers-sur-marne", latitude: 48.8230, longitude: 2.5440, isAccessible: true, municipality: "Villiers-sur-Marne" },
+  { name: "Les Yvris — Noisy-le-Grand", slug: "les-yvris", latitude: 48.8175, longitude: 2.5639, isAccessible: true, municipality: "Noisy-le-Grand" },
+  { name: "Émerainville — Pontault-Combault", slug: "emerainville", latitude: 48.8022, longitude: 2.6180, isAccessible: true, municipality: "Émerainville" },
+  { name: "Roissy-en-Brie", slug: "roissy-en-brie", latitude: 48.7920, longitude: 2.6524, isAccessible: true, municipality: "Roissy-en-Brie" },
+  { name: "Ozoir-la-Ferrière", slug: "ozoir-la-ferriere", latitude: 48.7660, longitude: 2.6785, isAccessible: true, municipality: "Ozoir-la-Ferrière" },
+  { name: "Gretz-Armainvilliers", slug: "gretz-armainvilliers", latitude: 48.7413, longitude: 2.7290, isAccessible: true, municipality: "Gretz-Armainvilliers" },
+  { name: "Tournan", slug: "tournan", latitude: 48.7405, longitude: 2.7700, isAccessible: true, municipality: "Tournan-en-Brie" },
+  // Western extension
+  { name: "Nanterre-La Folie", slug: "nanterre-la-folie", latitude: 48.8932, longitude: 2.2250, isAccessible: true, municipality: "Nanterre" },
 ];
 
 // ── Line stop sequences ───────────────────────────────────────────────
@@ -1058,6 +1174,9 @@ export const lineStopSequences: LineStopSequence[] = [
     { stationSlug: "melun", travelTimeToNext: null },
   ]},
   { lineCode: "RER-E", stops: [
+    { stationSlug: "nanterre-la-folie", travelTimeToNext: 150 },
+    { stationSlug: "la-defense", travelTimeToNext: 180 },
+    { stationSlug: "porte-maillot", travelTimeToNext: 180 },
     { stationSlug: "haussmann-saint-lazare", travelTimeToNext: 120 },
     { stationSlug: "magenta", travelTimeToNext: 180 },
     { stationSlug: "rosa-parks", travelTimeToNext: 120 },
@@ -1069,6 +1188,166 @@ export const lineStopSequences: LineStopSequence[] = [
     { stationSlug: "le-chenay-gagny", travelTimeToNext: 120 },
     { stationSlug: "chelles-gournay", travelTimeToNext: null },
   ]},
+
+  // ── RER A branches ──────────────────────────────────────────────────
+  // A3: Cergy-Le Haut → Nanterre-Préfecture (junction with trunk at position 6)
+  { lineCode: "RER-A", positionOffset: 100, stops: [
+    { stationSlug: "cergy-le-haut", travelTimeToNext: 120 },
+    { stationSlug: "cergy-saint-christophe", travelTimeToNext: 90 },
+    { stationSlug: "cergy-prefecture", travelTimeToNext: 120 },
+    { stationSlug: "neuville-universite", travelTimeToNext: 150 },
+    { stationSlug: "conflans-fin-d-oise", travelTimeToNext: 150 },
+    { stationSlug: "acheres-ville", travelTimeToNext: 180 },
+    { stationSlug: "maisons-laffitte", travelTimeToNext: 120 },
+    { stationSlug: "sartrouville", travelTimeToNext: 120 },
+    { stationSlug: "houilles-carrieres-sur-seine", travelTimeToNext: 180 },
+    { stationSlug: "nanterre-prefecture", travelTimeToNext: null },
+  ]},
+  // A5: Poissy → Maisons-Laffitte (junction with A3 branch at Maisons-Laffitte)
+  { lineCode: "RER-A", positionOffset: 200, stops: [
+    { stationSlug: "poissy", travelTimeToNext: 120 },
+    { stationSlug: "acheres-grand-cormier", travelTimeToNext: 120 },
+    { stationSlug: "maisons-laffitte", travelTimeToNext: null },
+  ]},
+  // A2: Nation → Boissy-Saint-Léger (junction with trunk at Nation, position 12)
+  { lineCode: "RER-A", positionOffset: 300, stops: [
+    { stationSlug: "nation", travelTimeToNext: 150 },
+    { stationSlug: "vincennes", travelTimeToNext: 120 },
+    { stationSlug: "fontenay-sous-bois", travelTimeToNext: 120 },
+    { stationSlug: "nogent-sur-marne", travelTimeToNext: 90 },
+    { stationSlug: "joinville-le-pont", travelTimeToNext: 120 },
+    { stationSlug: "saint-maur-creteil", travelTimeToNext: 90 },
+    { stationSlug: "le-parc-de-saint-maur", travelTimeToNext: 90 },
+    { stationSlug: "champigny", travelTimeToNext: 120 },
+    { stationSlug: "la-varenne-chennevieres", travelTimeToNext: 120 },
+    { stationSlug: "sucy-bonneuil", travelTimeToNext: 150 },
+    { stationSlug: "boissy-saint-leger", travelTimeToNext: null },
+  ]},
+
+  // ── RER B branches ──────────────────────────────────────────────────
+  // B5: Aulnay-sous-Bois → Mitry-Claye (junction with trunk at Aulnay, position 5)
+  { lineCode: "RER-B", positionOffset: 100, stops: [
+    { stationSlug: "aulnay-sous-bois", travelTimeToNext: 120 },
+    { stationSlug: "sevran-livry", travelTimeToNext: 120 },
+    { stationSlug: "vert-galant", travelTimeToNext: 120 },
+    { stationSlug: "villeparisis-mitry-le-neuf", travelTimeToNext: 120 },
+    { stationSlug: "mitry-claye", travelTimeToNext: null },
+  ]},
+  // B4: Bourg-la-Reine → Saint-Rémy-lès-Chevreuse (junction at Bourg-la-Reine, position 21)
+  { lineCode: "RER-B", positionOffset: 200, stops: [
+    { stationSlug: "bourg-la-reine", travelTimeToNext: 90 },
+    { stationSlug: "parc-de-sceaux", travelTimeToNext: 60 },
+    { stationSlug: "la-croix-de-berny", travelTimeToNext: 90 },
+    { stationSlug: "antony", travelTimeToNext: 90 },
+    { stationSlug: "fontaine-michalon", travelTimeToNext: 60 },
+    { stationSlug: "les-baconnets", travelTimeToNext: 90 },
+    { stationSlug: "massy-verrieres", travelTimeToNext: 90 },
+    { stationSlug: "massy-palaiseau", travelTimeToNext: 120 },
+    { stationSlug: "palaiseau", travelTimeToNext: 90 },
+    { stationSlug: "palaiseau-villebon", travelTimeToNext: 90 },
+    { stationSlug: "lozere", travelTimeToNext: 60 },
+    { stationSlug: "le-guichet", travelTimeToNext: 90 },
+    { stationSlug: "orsay-ville", travelTimeToNext: 90 },
+    { stationSlug: "bures-sur-yvette", travelTimeToNext: 90 },
+    { stationSlug: "la-hacquiniere", travelTimeToNext: 60 },
+    { stationSlug: "gif-sur-yvette", travelTimeToNext: 90 },
+    { stationSlug: "courcelle-sur-yvette", travelTimeToNext: 120 },
+    { stationSlug: "saint-remy-les-chevreuse", travelTimeToNext: null },
+  ]},
+
+  // ── RER C branches ──────────────────────────────────────────────────
+  // C1: Invalides → Pontoise via northwest route (junction at Invalides, position 9)
+  { lineCode: "RER-C", positionOffset: 100, stops: [
+    { stationSlug: "invalides", travelTimeToNext: 90 },
+    { stationSlug: "pont-de-l-alma", travelTimeToNext: 90 },
+    { stationSlug: "champ-de-mars-tour-eiffel", travelTimeToNext: 120 },
+    { stationSlug: "av-du-president-kennedy", travelTimeToNext: 90 },
+    { stationSlug: "boulainvilliers", travelTimeToNext: 60 },
+    { stationSlug: "av-henri-martin", travelTimeToNext: 90 },
+    { stationSlug: "av-foch", travelTimeToNext: 120 },
+    { stationSlug: "neuilly-porte-maillot-rerc", travelTimeToNext: 120 },
+    { stationSlug: "pereire-levallois", travelTimeToNext: 90 },
+    { stationSlug: "porte-de-clichy-rerc", travelTimeToNext: 120 },
+    { stationSlug: "saint-ouen-rerc", travelTimeToNext: 120 },
+    { stationSlug: "les-gresillons", travelTimeToNext: 120 },
+    { stationSlug: "gennevilliers", travelTimeToNext: 90 },
+    { stationSlug: "epinay-sur-seine", travelTimeToNext: 120 },
+    { stationSlug: "saint-gratien", travelTimeToNext: 90 },
+    { stationSlug: "ermont-eaubonne", travelTimeToNext: 120 },
+    { stationSlug: "cernay", travelTimeToNext: 90 },
+    { stationSlug: "franconville-le-plessis-bouchard", travelTimeToNext: 120 },
+    { stationSlug: "montigny-beauchamp", travelTimeToNext: 180 },
+    { stationSlug: "pierrelaye", travelTimeToNext: 120 },
+    { stationSlug: "saint-ouen-l-aumone", travelTimeToNext: 120 },
+    { stationSlug: "pontoise", travelTimeToNext: null },
+  ]},
+  // C7: Viroflay-Rive Gauche → Saint-Quentin-en-Yvelines (junction at Viroflay, position 2)
+  { lineCode: "RER-C", positionOffset: 200, stops: [
+    { stationSlug: "viroflay-rive-gauche", travelTimeToNext: 120 },
+    { stationSlug: "versailles-chantiers", travelTimeToNext: 180 },
+    { stationSlug: "saint-cyr", travelTimeToNext: 180 },
+    { stationSlug: "saint-quentin-en-yvelines", travelTimeToNext: null },
+  ]},
+  // C4: Juvisy → Dourdan-la-Forêt (junction at Juvisy, position 18)
+  { lineCode: "RER-C", positionOffset: 300, stops: [
+    { stationSlug: "juvisy", travelTimeToNext: 120 },
+    { stationSlug: "savigny-sur-orge", travelTimeToNext: 120 },
+    { stationSlug: "epinay-sur-orge", travelTimeToNext: 90 },
+    { stationSlug: "sainte-genevieve-des-bois", travelTimeToNext: 120 },
+    { stationSlug: "saint-michel-sur-orge", travelTimeToNext: 90 },
+    { stationSlug: "bretigny", travelTimeToNext: 120 },
+    { stationSlug: "la-norville", travelTimeToNext: 120 },
+    { stationSlug: "arpajon", travelTimeToNext: 120 },
+    { stationSlug: "egly", travelTimeToNext: 90 },
+    { stationSlug: "breuillet-bruyeres", travelTimeToNext: 120 },
+    { stationSlug: "breuillet-village", travelTimeToNext: 90 },
+    { stationSlug: "saint-cheron", travelTimeToNext: 120 },
+    { stationSlug: "sermaise", travelTimeToNext: 120 },
+    { stationSlug: "dourdan", travelTimeToNext: 60 },
+    { stationSlug: "dourdan-la-foret", travelTimeToNext: null },
+  ]},
+  // C6: Brétigny → Saint-Martin-d'Étampes (junction at Brétigny via C4 branch)
+  { lineCode: "RER-C", positionOffset: 400, stops: [
+    { stationSlug: "bretigny", travelTimeToNext: 180 },
+    { stationSlug: "marolles-en-hurepoix", travelTimeToNext: 120 },
+    { stationSlug: "bouray", travelTimeToNext: 120 },
+    { stationSlug: "lardy", travelTimeToNext: 120 },
+    { stationSlug: "chamarande", travelTimeToNext: 90 },
+    { stationSlug: "etrechy", travelTimeToNext: 120 },
+    { stationSlug: "etampes", travelTimeToNext: 90 },
+    { stationSlug: "saint-martin-d-etampes", travelTimeToNext: null },
+  ]},
+
+  // ── RER D branches ──────────────────────────────────────────────────
+  // D4: Villeneuve-Saint-Georges → Corbeil-Essonnes via Évry (junction at VSG, position 13)
+  { lineCode: "RER-D", positionOffset: 100, stops: [
+    { stationSlug: "villeneuve-saint-georges", travelTimeToNext: 150 },
+    { stationSlug: "vigneux-sur-seine", travelTimeToNext: 120 },
+    { stationSlug: "juvisy", travelTimeToNext: 120 },
+    { stationSlug: "viry-chatillon", travelTimeToNext: 90 },
+    { stationSlug: "grigny-centre", travelTimeToNext: 90 },
+    { stationSlug: "orangis-bois-de-l-epine", travelTimeToNext: 90 },
+    { stationSlug: "evry-courcouronnes", travelTimeToNext: 120 },
+    { stationSlug: "le-bras-de-fer", travelTimeToNext: 120 },
+    { stationSlug: "corbeil-essonnes", travelTimeToNext: null },
+  ]},
+
+  // ── RER E branches ──────────────────────────────────────────────────
+  // E4: Noisy-le-Sec → Tournan (junction at Noisy-le-Sec, position 4)
+  { lineCode: "RER-E", positionOffset: 100, stops: [
+    { stationSlug: "noisy-le-sec", travelTimeToNext: 150 },
+    { stationSlug: "val-de-fontenay", travelTimeToNext: 150 },
+    { stationSlug: "nogent-le-perreux", travelTimeToNext: 120 },
+    { stationSlug: "les-boullereaux-champigny", travelTimeToNext: 120 },
+    { stationSlug: "villiers-sur-marne", travelTimeToNext: 180 },
+    { stationSlug: "les-yvris", travelTimeToNext: 120 },
+    { stationSlug: "emerainville", travelTimeToNext: 120 },
+    { stationSlug: "roissy-en-brie", travelTimeToNext: 120 },
+    { stationSlug: "ozoir-la-ferriere", travelTimeToNext: 150 },
+    { stationSlug: "gretz-armainvilliers", travelTimeToNext: 150 },
+    { stationSlug: "tournan", travelTimeToNext: null },
+  ]},
+
   { lineCode: "T1", stops: [
     { stationSlug: "saint-denis-gare", travelTimeToNext: 120 },
     { stationSlug: "basilique-de-saint-denis", travelTimeToNext: 300 },
