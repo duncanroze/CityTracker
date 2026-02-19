@@ -18,6 +18,9 @@ prisma/generated/
 # Claude Code
 .claude/
 
+# TypeScript
+*.tsbuildinfo
+
 # IDE
 .vscode/
 .idea/
