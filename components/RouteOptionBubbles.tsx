@@ -16,10 +16,11 @@ function formatDuration(seconds: number): string {
   return `${mins} min`;
 }
 
-/** Strip transport prefix: M1->1, RER-A->A, keep T1/T2/T3A as-is */
+/** Strip transport prefix: M1->1, RER-A->A, TER-H->H, keep T1/T2/T3A as-is */
 function shortCode(code: string, transportType: string): string {
   if (transportType === 'METRO') return code.replace(/^M/, '');
   if (transportType === 'RER') return code.replace(/^RER-/, '');
+  if (transportType === 'TRANSILIEN') return code.replace(/^TER-/, '');
   return code;
 }
 
@@ -36,7 +37,7 @@ function LineCircle({
   transportType: string;
   disruption?: 'disrupted' | 'interrupted' | null;
 }) {
-  const isRER = transportType === 'RER';
+  const isRectangular = transportType === 'RER' || transportType === 'TRANSILIEN';
   const display = shortCode(code, transportType);
 
   return (
@@ -44,7 +45,7 @@ function LineCircle({
       <span
         className={cn(
           'inline-flex items-center justify-center font-bold leading-none shrink-0 shadow-sm',
-          isRER ? 'w-9 h-7 rounded-md text-[12px]' : 'w-8 h-8 rounded-full text-[13px]'
+          isRectangular ? 'w-9 h-7 rounded-md text-[12px]' : 'w-8 h-8 rounded-full text-[13px]'
         )}
         style={{
           backgroundColor: color,
