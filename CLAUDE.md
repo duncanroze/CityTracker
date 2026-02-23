@@ -108,6 +108,20 @@ prisma/
 - `@/*` path alias resolves from project root
 - React Leaflet loaded via `next/dynamic` with `ssr: false` (Leaflet requires `window`)
 
+## Multi-Branch Line Rendering
+
+- Lines with multiple branches use `positionOffset` in `paris-transport.ts` (trunk: positions 0-N, branches: 100+, 200+, 300+)
+- Branch detection: position gap > 1 between consecutive stations indicates a new branch (used in `graph.ts` and `AppMap.tsx`)
+- `AppMap.tsx` splits stations into separate Polylines per branch to avoid diagonal lines between branch endpoints
+- Metro lines with branches: M7 (Villejuif + Ivry), M10 (trunk + Auteuil loop), M13 (Saint-Denis + Les Courtilles)
+- RER/Transilien lines also use branches extensively (e.g., RER A has 5 branches, RER C has 5+)
+
+## Station Coordinate Data
+
+- All 557 station coordinates verified against OpenStreetMap (Overpass API) to <20m accuracy
+- Stations shared across transport types may have separate DB entries with suffixed slugs (e.g., `porchefontaine` for RER-C, `porchefontaine-l` for Transilien L; `porte-de-clichy` for Metro, `porte-de-clichy-rerc` for RER-C)
+- Similar station names on different lines are distinct entries: `chatelet` (Metro) vs `chatelet-les-halles` (RER); `saint-michel` (M4) vs `saint-michel-notre-dame` (RER-B/C)
+
 ## UI Layout
 
 - **Sidebar + Map split**: 380px fixed sidebar on the left, persistent Leaflet map fills the rest

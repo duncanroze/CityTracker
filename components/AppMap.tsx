@@ -146,12 +146,23 @@ export default function AppMap() {
     return { segments, stops, transfers, walkingLines, walkFromPin, walkToPin, origin, destination, allPoints };
   }, [overlay.type, overlay.route]);
 
-  // Line overlay
+  // Line overlay — split into branches by detecting position gaps > 1
   const lineData = useMemo(() => {
     if (overlay.type !== 'line' || !overlay.line) return null;
     const line = overlay.line;
-    const positions: LatLngTuple[] = line.stations.map((s) => [s.latitude, s.longitude]);
-    return { positions, color: line.color, stations: line.stations };
+
+    const branches: LatLngTuple[][] = [];
+    let currentBranch: LatLngTuple[] = [];
+    for (let i = 0; i < line.stations.length; i++) {
+      if (i > 0 && line.stations[i].position - line.stations[i - 1].position > 1) {
+        branches.push(currentBranch);
+        currentBranch = [];
+      }
+      currentBranch.push([line.stations[i].latitude, line.stations[i].longitude]);
+    }
+    if (currentBranch.length > 0) branches.push(currentBranch);
+
+    return { branches, color: line.color, stations: line.stations };
   }, [overlay.type, overlay.line]);
 
   const [zoom, setZoom] = useState(12);
@@ -255,10 +266,13 @@ export default function AppMap() {
         {/* Line overlay */}
         {lineData && (
           <>
-            <Polyline
-              positions={lineData.positions}
-              pathOptions={{ color: lineData.color, weight: 5, opacity: 0.9 }}
-            />
+            {lineData.branches.map((branch, i) => (
+              <Polyline
+                key={`branch-${i}`}
+                positions={branch}
+                pathOptions={{ color: lineData.color, weight: 5, opacity: 0.9 }}
+              />
+            ))}
             {lineData.stations.map((station) => (
               <CircleMarker
                 key={station.id}
