@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     url.searchParams.set('addressdetails', '0');
 
     const res = await fetch(url.toString(), {
-      headers: { 'User-Agent': 'coucou/1.0 (paris transport app)' },
+      headers: { 'User-Agent': 'CityTracker/1.0 (paris transport app)' },
       next: { revalidate: 300 },
     });
 
