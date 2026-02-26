@@ -43,7 +43,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <Train className="w-5 h-5 text-muted-foreground" />
-              <h1 className="text-base font-semibold hidden sm:block">coucou</h1>
+              <h1 className="text-base font-semibold hidden sm:block">CityTracker</h1>
             </div>
             {/* Desktop nav only — mobile nav is inside the drawer */}
             <div className="hidden md:block">
