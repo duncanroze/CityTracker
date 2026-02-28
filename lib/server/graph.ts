@@ -37,10 +37,27 @@ export interface TransportGraph {
 
 let cachedGraph: TransportGraph | null = null;
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000;
+
 export async function getGraph(): Promise<TransportGraph> {
   if (cachedGraph) return cachedGraph;
-  cachedGraph = await buildGraph();
-  return cachedGraph;
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      cachedGraph = await buildGraph();
+      return cachedGraph;
+    } catch (err) {
+      console.warn(`[graph] Build attempt ${attempt}/${MAX_RETRIES} failed:`, (err as Error).message);
+      if (attempt < MAX_RETRIES) {
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  throw new Error('Unreachable');
 }
 
 async function buildGraph(): Promise<TransportGraph> {

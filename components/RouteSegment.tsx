@@ -1,11 +1,48 @@
 'use client';
 
-import { useState } from 'react';
-import { AlertTriangle, ChevronDown } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { AlertTriangle, ChevronDown, Timer } from 'lucide-react';
 import type { RouteSegment as RouteSegmentType } from '@/types';
 import type { LineDisruption } from '@/hooks/useDisruptions';
 import LineBadge from './LineBadge';
 import { cn } from '@/lib/utils';
+
+function DepartureCountdown({ departure }: { departure: string }) {
+  const [remainingSec, setRemainingSec] = useState(() => {
+    const diff = Math.floor((new Date(departure).getTime() - Date.now()) / 1000);
+    return Math.max(0, diff);
+  });
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const diff = Math.floor((new Date(departure).getTime() - Date.now()) / 1000);
+      setRemainingSec(Math.max(0, diff));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [departure]);
+
+  const mins = Math.floor(remainingSec / 60);
+  const isImminent = remainingSec < 60;
+  const isPassed = remainingSec <= 0;
+
+  if (isPassed) return null;
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium mb-1',
+        isImminent
+          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 animate-pulse'
+          : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+      )}
+    >
+      <Timer className="w-3.5 h-3.5 shrink-0" />
+      {isImminent
+        ? 'Départ imminent'
+        : `Prochain départ dans ${mins} min`}
+    </div>
+  );
+}
 
 interface RouteSegmentProps {
   segment: RouteSegmentType;
@@ -60,18 +97,9 @@ export default function RouteSegment({ segment, disruption }: RouteSegmentProps)
         </div>
       )}
 
-      {/* Real-time departure info */}
+      {/* Real-time departure countdown */}
       {segment.nextDepartures && segment.nextDepartures.length > 0 && (
-        <div className="flex items-center gap-2 pb-2 text-xs">
-          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
-            Prochain départ : {new Date(segment.nextDepartures[0]).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
-          </span>
-          {segment.waitTimeSeconds != null && segment.waitTimeSeconds > 0 && (
-            <span className="text-muted-foreground">
-              (attente ~{Math.ceil(segment.waitTimeSeconds / 60)} min)
-            </span>
-          )}
-        </div>
+        <DepartureCountdown departure={segment.nextDepartures[0]} />
       )}
 
       {/* Stops */}

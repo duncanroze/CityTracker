@@ -72,8 +72,8 @@ function LayoutInner({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        {/* Map — always visible */}
-        <div className="flex-1 relative">
+        {/* Map — always visible, z-[1] so the mobile drawer (z-50) stacks above */}
+        <div className="flex-1 relative z-[1]">
           <AppMap />
         </div>
 

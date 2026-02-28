@@ -16,6 +16,13 @@ function formatDuration(seconds: number): string {
   return `${mins} min`;
 }
 
+function formatEta(durationSeconds: number): string {
+  const eta = new Date(Date.now() + durationSeconds * 1000);
+  const h = eta.getHours();
+  const m = String(eta.getMinutes()).padStart(2, '0');
+  return `${h}h${m}`;
+}
+
 /** Strip transport prefix: M1->1, RER-A->A, keep T1/T2/T3A as-is */
 function shortCode(code: string, transportType: string): string {
   if (transportType === 'METRO') return code.replace(/^M/, '');
@@ -109,9 +116,14 @@ export default memo(function RouteOptionBubbles({
         >
           {label === 'Fastest' ? 'Le plus rapide' : `Option ${label.replace('Option ', '')}`}
         </span>
-        <span className="text-sm font-semibold">
-          {formatDuration(route.totalDurationSeconds)}
-        </span>
+        <div className="text-right">
+          <span className="text-sm font-semibold">
+            {formatDuration(route.totalDurationSeconds)}
+          </span>
+          <span className="ml-1.5 text-[11px] text-muted-foreground">
+            → {formatEta(route.totalDurationSeconds)}
+          </span>
+        </div>
       </div>
 
       {/* Circle chain */}

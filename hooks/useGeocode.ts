@@ -19,7 +19,7 @@ export function useGeocode() {
 
     setLoading(true);
 
-    // Debounce 400ms to respect Nominatim rate limits
+    // Debounce 300ms to respect Nominatim rate limits
     timerRef.current = setTimeout(async () => {
       const controller = new AbortController();
       controllerRef.current = controller;
@@ -38,7 +38,7 @@ export function useGeocode() {
       } finally {
         setLoading(false);
       }
-    }, 400);
+    }, 300);
   }, []);
 
   const clear = useCallback(() => {

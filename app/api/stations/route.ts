@@ -8,6 +8,9 @@ export async function GET() {
       select: {
         id: true,
         name: true,
+        latitude: true,
+        longitude: true,
+        isAccessible: true,
         lineStops: {
           select: {
             line: {
@@ -26,6 +29,9 @@ export async function GET() {
     const result = stations.map((s) => ({
       id: s.id,
       name: s.name,
+      latitude: s.latitude,
+      longitude: s.longitude,
+      isAccessible: s.isAccessible,
       lines: s.lineStops.map((ls) => ({
         code: ls.line.code,
         color: ls.line.color,

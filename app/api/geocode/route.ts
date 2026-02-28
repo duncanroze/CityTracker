@@ -5,10 +5,19 @@ const querySchema = z.object({
   q: z.string().min(2, 'Query must be at least 2 characters'),
 });
 
+interface NominatimAddress {
+  house_number?: string;
+  road?: string;
+  suburb?: string;
+  city?: string;
+  postcode?: string;
+}
+
 interface NominatimResult {
   display_name: string;
   lat: string;
   lon: string;
+  address?: NominatimAddress;
 }
 
 export async function GET(request: NextRequest) {
@@ -30,11 +39,16 @@ export async function GET(request: NextRequest) {
     url.searchParams.set('format', 'json');
     url.searchParams.set('limit', '5');
     url.searchParams.set('viewbox', '2.1,48.95,2.6,48.75');
-    url.searchParams.set('bounded', '1');
-    url.searchParams.set('addressdetails', '0');
+    url.searchParams.set('bounded', '0');
+    url.searchParams.set('countrycodes', 'fr');
+    url.searchParams.set('dedupe', '1');
+    url.searchParams.set('addressdetails', '1');
 
     const res = await fetch(url.toString(), {
-      headers: { 'User-Agent': 'CityTracker/1.0 (paris transport app)' },
+      headers: {
+        'User-Agent': 'CityTracker/1.0 (paris transport app)',
+        'Accept-Language': 'fr',
+      },
       next: { revalidate: 300 },
     });
 
@@ -47,11 +61,25 @@ export async function GET(request: NextRequest) {
 
     const data: NominatimResult[] = await res.json();
 
-    const results = data.map((r) => ({
-      address: r.display_name,
-      lat: parseFloat(r.lat),
-      lng: parseFloat(r.lon),
-    }));
+    const results = data.map((r) => {
+      // Build a concise address from structured fields when available
+      const a = r.address;
+      let address = r.display_name;
+      if (a?.road) {
+        const parts: string[] = [];
+        if (a.house_number) parts.push(a.house_number);
+        parts.push(a.road);
+        if (a.postcode || a.city) {
+          parts.push([a.postcode, a.city].filter(Boolean).join(' '));
+        }
+        address = parts.join(', ');
+      }
+      return {
+        address,
+        lat: parseFloat(r.lat),
+        lng: parseFloat(r.lon),
+      };
+    });
 
     return NextResponse.json(results, {
       headers: {

@@ -86,7 +86,7 @@ export default function LignesPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {sections.map(
         (section) =>
           section.lines.length > 0 && (

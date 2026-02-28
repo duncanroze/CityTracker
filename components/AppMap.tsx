@@ -7,7 +7,7 @@ import { useMapContext } from '@/contexts/MapContext';
 
 function MapController({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
   const map = useMap();
-  const { overlay } = useMapContext();
+  const { overlay, previewPins } = useMapContext();
   const hadOverlay = useRef(false);
 
   // Invalidate size when map container might have resized
@@ -60,11 +60,24 @@ function MapController({ onZoomChange }: { onZoomChange: (zoom: number) => void 
     }
   }, [overlay, map]);
 
+  // Fly to preview pins when they change (and no route overlay active)
+  useEffect(() => {
+    if (overlay.type !== 'none') return;
+    if (previewPins.length === 0) return;
+
+    if (previewPins.length === 1) {
+      map.flyTo([previewPins[0].lat, previewPins[0].lng], 14, { duration: 0.8 });
+    } else if (previewPins.length === 2) {
+      const bounds: LatLngTuple[] = previewPins.map((p) => [p.lat, p.lng]);
+      map.fitBounds(bounds, { padding: [50, 50], maxZoom: 14 });
+    }
+  }, [previewPins, overlay.type, map]);
+
   return null;
 }
 
 export default function AppMap() {
-  const { overlay, dark } = useMapContext();
+  const { overlay, dark, previewPins } = useMapContext();
 
   const tileUrl = dark
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -298,6 +311,25 @@ export default function AppMap() {
             ))}
           </>
         )}
+
+        {/* Preview pins (shown before route search) */}
+        {!routeData && previewPins.map((pin) => (
+          <CircleMarker
+            key={`preview-${pin.type}`}
+            center={[pin.lat, pin.lng]}
+            radius={8}
+            pathOptions={{
+              color: pin.type === 'origin' ? '#16a34a' : '#dc2626',
+              fillColor: pin.type === 'origin' ? '#22c55e' : '#ef4444',
+              fillOpacity: 1,
+              weight: 3,
+            }}
+          >
+            <Tooltip permanent direction="top" offset={[0, -10]} className="station-label">
+              <span style={tooltipStyle}>{pin.label}</span>
+            </Tooltip>
+          </CircleMarker>
+        ))}
       </MapContainer>
     </div>
   );

@@ -128,6 +128,22 @@
   }
 }
 
+/* Subtle glow pulse for search button */
+@keyframes btn-glow {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.205 0 0 / 0%); }
+  50% { box-shadow: 0 0 8px 2px oklch(0.205 0 0 / 12%); }
+}
+.dark .btn-glow-ready {
+  animation: btn-glow-dark 2s ease-in-out infinite;
+}
+@keyframes btn-glow-dark {
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.922 0 0 / 0%); }
+  50% { box-shadow: 0 0 8px 2px oklch(0.922 0 0 / 15%); }
+}
+.btn-glow-ready {
+  animation: btn-glow 2s ease-in-out infinite;
+}
+
 /* Leaflet overrides for dark mode */
 .dark .leaflet-control-zoom a {
   background-color: oklch(0.205 0 0);

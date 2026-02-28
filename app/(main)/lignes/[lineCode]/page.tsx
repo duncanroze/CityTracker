@@ -3,7 +3,7 @@
 import { useEffect, useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Accessibility } from 'lucide-react';
 import { useLines } from '@/hooks/useLines';
 import { useDisruptions } from '@/hooks/useDisruptions';
 import { useMapContext } from '@/contexts/MapContext';
@@ -154,6 +154,9 @@ export default function LigneDetailPage() {
                 >
                   {station.name}
                 </span>
+                {station.isAccessible && (
+                  <Accessibility className="w-3.5 h-3.5 text-blue-500 shrink-0" aria-label="Accessible PMR" />
+                )}
               </div>
             );
           })}

@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'SF Mono', monospace;
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-border: #e2e8f0;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-agent-planner: #6366f1;
+  --color-agent-designer: #f43f5e;
+  --color-agent-backend: #10b981;
+  --color-agent-reviewer: #f59e0b;
+  --color-agent-tester: #8b5cf6;
+  --color-status-idle: #64748b;
+  --color-status-running: #f59e0b;
+  --color-status-completed: #22c55e;
+  --color-status-error: #ef4444;
+  --color-status-paused: #f59e0b;
+  --color-status-blocked: #d946ef;
+}
+
+.dark {
+  --color-background: #020617;
+  --color-foreground: #e2e8f0;
+  --color-muted: #0f172a;
+  --color-muted-foreground: #94a3b8;
+  --color-border: #1e293b;
+  --color-card: #0f172a;
+  --color-card-foreground: #f1f5f9;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+@keyframes scanline {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
+}
+
+.animate-scanline {
+  animation: scanline 2s linear infinite;
+}

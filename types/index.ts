@@ -8,6 +8,9 @@ export interface StationLine {
 export interface Station {
   id: string;
   name: string;
+  latitude: number;
+  longitude: number;
+  isAccessible?: boolean;
   lines: StationLine[];
 }
 
@@ -88,6 +91,7 @@ export interface LineStation {
   latitude: number;
   longitude: number;
   position: number;
+  isAccessible?: boolean;
 }
 
 export interface LineWithStations {

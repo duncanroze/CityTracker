@@ -126,7 +126,7 @@ export default function TraficPage() {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in duration-200">
       {/* Summary */}
       <div className="rounded-lg border border-border bg-card p-3">
         {disruptedCount > 0 ? (

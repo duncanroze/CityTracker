@@ -16,6 +16,7 @@ export async function GET() {
                 slug: true,
                 latitude: true,
                 longitude: true,
+                isAccessible: true,
               },
             },
           },
@@ -37,6 +38,7 @@ export async function GET() {
         latitude: ls.station.latitude,
         longitude: ls.station.longitude,
         position: ls.position,
+        isAccessible: ls.station.isAccessible,
       })),
     }));
 

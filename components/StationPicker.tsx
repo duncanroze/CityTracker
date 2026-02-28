@@ -39,6 +39,7 @@ export default function StationPicker({ label, stations, selected, onSelect }: S
   const [query, setQuery] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [highlightIndex, setHighlightIndex] = useState(0);
+  const [justSelected, setJustSelected] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
@@ -46,13 +47,25 @@ export default function StationPicker({ label, stations, selected, onSelect }: S
   const { results: geocodeResults, loading: geocodeLoading, search: geocodeSearch, clear: geocodeClear } = useGeocode();
 
   // Station name matches (instant, local)
-  const stationMatches = useMemo(
-    () =>
-      query.length > 0
-        ? stations.filter((s) => normalize(s.name).includes(normalize(query))).slice(0, 5)
-        : [],
-    [query, stations],
-  );
+  // Primary: substring match. Fallback: each query word is a prefix of a station name word.
+  const stationMatches = useMemo(() => {
+    if (query.length === 0) return [];
+
+    const nq = normalize(query);
+    const primary = stations.filter((s) => normalize(s.name).includes(nq));
+
+    if (primary.length >= 3 || query.length < 3) return primary.slice(0, 5);
+
+    // Prefix-based fallback: every word in the query must be a prefix of some word in the station name
+    const queryWords = nq.split(/\s+/).filter(Boolean);
+    const fallback = stations.filter((s) => {
+      if (primary.includes(s)) return false;
+      const nameWords = normalize(s.name).split(/[\s\-']+/);
+      return queryWords.every((qw) => nameWords.some((nw) => nw.startsWith(qw)));
+    });
+
+    return [...primary, ...fallback].slice(0, 5);
+  }, [query, stations]);
 
   // Address matches from geocode
   const addressItems: PickerItem[] = useMemo(
@@ -93,6 +106,9 @@ export default function StationPicker({ label, stations, selected, onSelect }: S
       }
       setIsOpen(false);
       geocodeClear();
+      // Green border flash on selection
+      setJustSelected(true);
+      setTimeout(() => setJustSelected(false), 300);
     },
     [onSelect, geocodeClear],
   );
@@ -180,7 +196,7 @@ export default function StationPicker({ label, stations, selected, onSelect }: S
           aria-expanded={showListbox}
           aria-controls={showListbox ? listboxId : undefined}
           aria-activedescendant={activeDescendantId}
-          className="pr-8"
+          className={cn('pr-8 transition-colors duration-300', justSelected && 'border-emerald-500 ring-1 ring-emerald-500/30')}
         />
         {(selected || query) && (
           <button
