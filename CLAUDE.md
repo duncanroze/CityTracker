@@ -62,6 +62,7 @@ app/
     lines/route.ts          # GET /api/lines
     departures/route.ts     # GET /api/departures?lineStopId=
     disruptions/route.ts    # GET /api/disruptions
+    geocode/route.ts        # GET /api/geocode?q= (forward) or ?lat=&lng= (reverse)
 
 components/
   ui/                       # shadcn/ui primitives
@@ -80,7 +81,7 @@ components/
   MobileDrawer.tsx          # Responsive drawer for mobile view
 
 contexts/
-  MapContext.tsx            # Map overlay state, dark mode, share deep-linking (React Context)
+  MapContext.tsx            # Map overlay state, dark mode, map clicks, preview pins (React Context)
 
 hooks/
   useRoute.ts               # Route search (fetch /api/route)
@@ -116,6 +117,8 @@ prisma/
 dashboard/                   # Pipeline monitoring dashboard (dev tool)
   server/
     protocol.ts             # Shared TypeScript types (WS messages, agents, state)
+    orchestrator.ts         # Pipeline orchestrator (agent sequencing, redispatch, plan approval)
+    claude-client.ts        # Claude Code CLI wrapper (spawn `claude -p`, stream parsing)
     ws-server.ts            # HTTP + WebSocket server (port 3002)
   src/
     App.tsx                 # Root app component
@@ -132,11 +135,13 @@ dashboard/                   # Pipeline monitoring dashboard (dev tool)
       AgentDashboard.tsx    # Main dashboard orchestrator
       AgentCard.tsx         # Individual agent status card (clickable)
       AgentDetailPanel.tsx  # Agent detail drawer (logs, feedback, score)
+      ChatInput.tsx         # Chat input with markdown plan display + plan approval
       PipelineView.tsx      # Pipeline layout with dependency connectors
       PhaseTracker.tsx      # Phase progress indicator with iteration badge
       ActivityLog.tsx       # Real-time log stream with feedback styling
       SummaryBanner.tsx     # Pipeline completion summary
       RunHistory.tsx        # Past pipeline runs list
+      RunDetailModal.tsx    # Modal for viewing past run details
 ```
 
 ## Key Patterns
@@ -314,41 +319,68 @@ The `gh` CLI may not be available or on PATH. For git operations, prefer direct 
 - Favorites displayed above search form when no route is active
 - Each favorite stores `{ from: {lat, lng, label}, to: {lat, lng, label}, createdAt }`
 
+### Map Click to Set Origin/Destination
+- Click the map (when no route overlay is active) to set origin (1st click) or destination (2nd click)
+- `MapClickHandler` in `AppMap.tsx` uses `useMapEvents` to detect clicks, stores in `MapContext.lastMapClick`
+- `page.tsx` consumes clicks: reverse geocodes via `/api/geocode?lat=&lng=` (Nominatim), then calls `handleSelectionChange`
+- Preview pin shown immediately at click coordinates while reverse geocoding runs
+- Skips if both origin and destination are already filled
+
+### Reverse Geocoding
+- `/api/geocode` endpoint supports both forward (`?q=address`) and reverse (`?lat=&lng=`) geocoding
+- Uses OpenStreetMap Nominatim API (no API key required)
+- Forward: returns `{ results: [{ address, lat, lng }] }`
+- Reverse: returns `{ address, lat, lng }`
+
 ## Pipeline Dashboard (Development Tool)
 
-Separate Vite + React app in `dashboard/` for monitoring multi-agent pipeline execution.
+Separate Vite + React app in `dashboard/` for multi-agent pipeline execution. Agents use **Claude Code CLI** (`claude -p`) — no API credits needed, uses the Claude Max subscription.
 
 ### Stack
 - **Vite** + **React 19** + **Tailwind CSS v4** + **lucide-react**
 - **WebSocket server** (Node.js `ws` + `http`) on port 3002
+- **Claude Code CLI** spawned per agent via `child_process.spawn`
 - No database — state in memory, history persisted to `pipeline-history.json`
+
+### Architecture
+
+The pipeline uses `claude -p --output-format stream-json --verbose --model sonnet` to spawn agents as subprocesses. Each agent gets:
+- A system prompt (French, CityTracker-specific) defining its role
+- Context from upstream agents' outputs
+- Tool access controlled via `--allowedTools`
+
+#### Agent Tool Access
+| Agent | Tools | Role |
+|---|---|---|
+| `planner` | _(none — text only)_ | Analyze request, produce structured plan |
+| `designer` | Read, Edit, Write, Glob, Grep | Implement frontend changes |
+| `backend` | Read, Edit, Write, Glob, Grep | Implement backend changes |
+| `reviewer` | Read, Glob, Grep | Code review (read-only) |
+| `tester` | Read, Glob, Grep, Bash | Run tests + verify build |
+
+#### Pipeline Flow
+1. User submits request via chat
+2. **Planner** analyzes and produces a plan
+3. Plan displayed for user approval (markdown rendered)
+4. On approval: **Designer** + **Backend** run in parallel
+5. **Reviewer** checks all outputs, may REDISPATCH to designer/backend
+6. **Tester** verifies build, may REDISPATCH
+7. Max 3 iterations of redispatch loops
 
 ### WS Server API (`localhost:3002`)
 
-| Endpoint | Method | Description |
-|---|---|---|
-| `/api/state` | POST | Update pipeline state (agents, phase, status, request) |
-| `/api/log` | POST | Append log entry `{ agent, msg }` |
-| `/api/score` | POST | Update agent score `{ agent, score }` (0-100) |
-| `/api/feedback` | POST | Post review feedback with optional re-dispatch |
-| `/api/reset` | POST | Reset pipeline to idle |
-| `/api/health` | GET | Health check + connected client count |
-| `/api/history` | GET | All past pipeline runs |
+WebSocket messages (JSON) for real-time pipeline state, logs, streaming text, and feedback.
 
 ### Agents & Dependencies
 - 5 agents: `planner`, `designer`, `backend`, `reviewer`, `tester`
 - Dependency graph: `planner → designer + backend (parallel) → reviewer → tester`
-- **Auto-progression**: when `autoApprove` is true, agents auto-start when all dependencies are completed
 - Phases: 0=idle, 1=planning, 2=executing, 3=reviewing, 4=testing
 
 ### Feedback & Re-dispatch
 - Reviewer or tester can send feedback targeting other agents
-- Feedback payload: `{ from, target, action, severity, message }`
-- Actions: `redispatch` (re-runs target agents) or `note` (informational)
-- Severities: `info`, `warning`, `blocking`
+- Format in agent output: `REDISPATCH: [agent] - [reason]`
 - Re-dispatch resets target agents + all transitive downstream agents to idle
 - Iteration limit: `maxIterations` (default 3), prevents infinite loops
-- Pipeline auto-resets 8 seconds after completion
 
 ### Status Colors
 - **Running/active**: amber (#f59e0b)

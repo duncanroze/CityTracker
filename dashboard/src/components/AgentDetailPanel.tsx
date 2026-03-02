@@ -10,6 +10,7 @@ interface AgentDetailPanelProps {
   score: number;
   logs: PipelineLog[];
   feedback: FeedbackEntry[];
+  streamBuffer?: string;
   onClose: () => void;
 }
 
@@ -19,16 +20,24 @@ const SEVERITY_STYLE = {
   blocking: { icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
 };
 
-export default function AgentDetailPanel({ agentId, status, score, logs, feedback, onClose }: AgentDetailPanelProps) {
+export default function AgentDetailPanel({ agentId, status, score, logs, feedback, streamBuffer, onClose }: AgentDetailPanelProps) {
   const agent = AGENTS.find(a => a.id === agentId);
   const cfg = STATUS_CONFIG[status];
   const panelRef = useRef<HTMLDivElement>(null);
+  const streamRef = useRef<HTMLPreElement>(null);
 
   // Filter logs for this agent
   const agentLogs = logs.filter(l => l.agent === agentId);
 
   // Feedback involving this agent (sent by or targeting)
   const agentFeedback = feedback.filter(f => f.from === agentId || f.target.includes(agentId));
+
+  // Auto-scroll stream output
+  useEffect(() => {
+    if (streamRef.current) {
+      streamRef.current.scrollTop = streamRef.current.scrollHeight;
+    }
+  }, [streamBuffer]);
 
   // Close on escape
   useEffect(() => {
@@ -112,6 +121,21 @@ export default function AgentDetailPanel({ agentId, status, score, logs, feedbac
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
+          {/* Stream output section */}
+          {streamBuffer && streamBuffer.length > 0 && (
+            <div className="border-b border-border px-5 py-4">
+              <div className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                Output agent {status === 'running' && <span className="ml-1 animate-pulse text-amber-400">(streaming...)</span>}
+              </div>
+              <pre
+                ref={streamRef}
+                className="max-h-[300px] overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-[11px] text-foreground/85"
+              >
+                {streamBuffer}
+              </pre>
+            </div>
+          )}
+
           {/* Feedback section */}
           {agentFeedback.length > 0 && (
             <div className="border-b border-border px-5 py-4">

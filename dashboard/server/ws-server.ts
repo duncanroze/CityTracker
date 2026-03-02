@@ -1,7 +1,18 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execSync } from 'node:child_process';
 import { WebSocketServer, WebSocket } from 'ws';
+import { PipelineOrchestrator } from './orchestrator.js';
+
+// Check that claude CLI is available (required for pipeline execution)
+try {
+  const version = execSync('claude --version 2>/dev/null', { encoding: 'utf-8' }).trim();
+  console.log(`[ws] Claude CLI found: ${version}`);
+} catch {
+  console.warn('[ws] ⚠ Claude CLI not found on PATH. Pipeline execution will fail.');
+  console.warn('[ws]   Install Claude Code: https://docs.anthropic.com/en/docs/claude-code');
+}
 import type {
   AgentId,
   PipelinePhase,
@@ -14,6 +25,7 @@ import type {
   LogPayload,
   ScorePayload,
   WsMessage,
+  WsClientMessage,
 } from './protocol.js';
 
 const PORT = parseInt(process.env.WS_PORT ?? '3002', 10);
@@ -57,6 +69,8 @@ const DEFAULT_STATE: PipelineState = {
   autoApprove: true,
   startedAt: null,
   feedback: [],
+  outputs: {},
+  pendingPlan: null,
 };
 
 // --- Persistent history ---
@@ -71,9 +85,9 @@ function loadHistory(): { runs: PipelineRun[]; nextId: number } {
   }
 }
 
-function saveHistory(runs: PipelineRun[]) {
+function saveHistory(allRuns: PipelineRun[]) {
   try {
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify(runs, null, 2));
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(allRuns, null, 2));
   } catch (err) {
     console.error('[ws] Failed to persist history:', err);
   }
@@ -88,6 +102,7 @@ const runs: PipelineRun[] = loaded.runs;
 let runIdCounter = loaded.nextId - 1;
 let startTimestamp: number | null = null;
 let autoResetTimer: ReturnType<typeof setTimeout> | null = null;
+let activeOrchestrator: PipelineOrchestrator | null = null;
 
 function broadcast(msg: WsMessage) {
   const payload = JSON.stringify(msg);
@@ -128,6 +143,8 @@ function markStartIfNeeded() {
 
 function autoProgress() {
   if (!currentState.autoApprove) return;
+  // Don't auto-start agents when pipeline is idle — only the orchestrator (chat) starts pipelines
+  if (currentState.status === 'idle') return;
 
   let changed = false;
   for (const agent of VALID_AGENTS) {
@@ -185,6 +202,7 @@ function checkPipelineComplete() {
     feedbackCount: feedbackEntries.length,
     logs: [...logs],
     feedback: [...feedbackEntries],
+    outputs: { ...currentState.outputs },
   };
   runs.push(run);
   saveHistory(runs);
@@ -198,9 +216,91 @@ function checkPipelineComplete() {
     feedbackEntries = [];
     feedbackIdCounter = 0;
     startTimestamp = null;
+    activeOrchestrator = null;
     broadcast({ type: 'reset' });
     console.log(`[ws] Pipeline auto-reset after run #${run.id}`);
   }, AUTO_RESET_DELAY);
+}
+
+// --- Orchestrator-driven pipeline ---
+function startOrchestratedPipeline(message: string) {
+  if (activeOrchestrator) {
+    console.log('[ws] Pipeline already running, ignoring chat message');
+    return;
+  }
+
+  // Clear any auto-reset timer
+  if (autoResetTimer) { clearTimeout(autoResetTimer); autoResetTimer = null; }
+
+  // Reset state
+  logs = [];
+  feedbackEntries = [];
+  feedbackIdCounter = 0;
+  startTimestamp = Date.now();
+
+  const orchestrator = new PipelineOrchestrator({
+    onStateChange: (state) => {
+      currentState = state;
+      broadcast({ type: 'state', data: state });
+    },
+    onLog: (entry) => {
+      logs.push(entry);
+      broadcast({ type: 'log', data: entry });
+    },
+    onFeedback: (entry) => {
+      feedbackEntries.push(entry);
+      broadcast({ type: 'feedback', data: entry });
+    },
+    onStreamChunk: (chunk) => {
+      broadcast({ type: 'stream', data: chunk });
+    },
+    onPlanReady: (plan) => {
+      broadcast({ type: 'plan_ready', data: { plan } });
+    },
+    onComplete: () => {
+      // Sync final state
+      currentState = orchestrator.getState();
+      currentState.outputs = orchestrator.getOutputs();
+      broadcast({ type: 'state', data: structuredClone(currentState) });
+      checkPipelineComplete();
+    },
+  });
+
+  activeOrchestrator = orchestrator;
+  orchestrator.startPipeline(message).catch(err => {
+    console.error('[ws] Orchestrator error:', err);
+    const logEntry: PipelineLogEntry = {
+      time: now(),
+      agent: 'planner',
+      msg: `[ERREUR FATALE] ${err instanceof Error ? err.message : 'Erreur inconnue'}`,
+    };
+    logs.push(logEntry);
+    broadcast({ type: 'log', data: logEntry });
+    currentState.status = 'error';
+    broadcast({ type: 'state', data: structuredClone(currentState) });
+    checkPipelineComplete();
+  });
+}
+
+function handleWsClientMessage(msg: WsClientMessage) {
+  if (msg.type === 'chat') {
+    const message = msg.data?.message?.trim();
+    if (!message) return;
+    console.log(`[ws] Chat message received: "${message.substring(0, 80)}..."`);
+    startOrchestratedPipeline(message);
+  } else if (msg.type === 'approve_plan') {
+    if (activeOrchestrator) {
+      const plan = msg.data?.plan ?? '';
+      console.log('[ws] Plan approved by user');
+      activeOrchestrator.approvePlan(plan);
+    }
+  } else if (msg.type === 'reject_plan') {
+    if (activeOrchestrator) {
+      console.log('[ws] Plan rejected by user');
+      activeOrchestrator.rejectPlan();
+      activeOrchestrator = null;
+    }
+  }
 }
 
 const server = http.createServer(async (req, res) => {
@@ -217,9 +317,21 @@ const server = http.createServer(async (req, res) => {
 
   try {
     if (url.pathname === '/api/health' && req.method === 'GET') {
-      json(res, 200, { ok: true, clients: wss.clients.size });
+      json(res, 200, { ok: true, clients: wss.clients.size, orchestratorActive: !!activeOrchestrator });
     } else if (url.pathname === '/api/history' && req.method === 'GET') {
       json(res, 200, runs);
+    } else if (url.pathname === '/api/chat' && req.method === 'POST') {
+      const body = JSON.parse(await readBody(req)) as { message: string };
+      if (!body.message?.trim()) {
+        json(res, 400, { error: 'Message required' });
+        return;
+      }
+      if (activeOrchestrator) {
+        json(res, 409, { error: 'Pipeline already running' });
+        return;
+      }
+      startOrchestratedPipeline(body.message.trim());
+      json(res, 200, { ok: true });
     } else if (url.pathname === '/api/state' && req.method === 'POST') {
       if (autoResetTimer) { clearTimeout(autoResetTimer); autoResetTimer = null; }
 
@@ -316,8 +428,6 @@ const server = http.createServer(async (req, res) => {
         currentState.iterations++;
         for (const t of targets) currentState.state[t] = 'running';
 
-        // Reset downstream agents transitively: any agent that depends (directly or
-        // indirectly) on a target must be reset to idle so it re-runs after the target.
         const resetSet = new Set<AgentId>(targets);
         let changed = true;
         while (changed) {
@@ -358,6 +468,7 @@ const server = http.createServer(async (req, res) => {
       feedbackEntries = [];
       feedbackIdCounter = 0;
       startTimestamp = null;
+      activeOrchestrator = null;
       broadcast({ type: 'reset' });
       json(res, 200, { ok: true });
     } else {
@@ -382,16 +493,29 @@ wss.on('connection', (ws) => {
     ws.send(JSON.stringify({ type: 'history', data: runs } satisfies WsMessage));
   }
   console.log(`[ws] Client connected (${wss.clients.size} total)`);
+
+  // Handle client messages (chat, plan approval)
+  ws.on('message', (raw) => {
+    try {
+      const msg = JSON.parse(raw.toString()) as WsClientMessage;
+      handleWsClientMessage(msg);
+    } catch {
+      // Ignore malformed messages
+    }
+  });
+
   ws.on('close', () => console.log(`[ws] Client disconnected (${wss.clients.size} total)`));
 });
 
 server.listen(PORT, () => {
   console.log(`[ws] Pipeline WS server on http://localhost:${PORT}`);
-  console.log(`[ws]   POST /api/state   — update pipeline state`);
-  console.log(`[ws]   POST /api/log     — append log entry`);
-  console.log(`[ws]   POST /api/score   — update agent score`);
+  console.log(`[ws]   POST /api/chat     — start orchestrated pipeline`);
+  console.log(`[ws]   POST /api/state    — update pipeline state`);
+  console.log(`[ws]   POST /api/log      — append log entry`);
+  console.log(`[ws]   POST /api/score    — update agent score`);
   console.log(`[ws]   POST /api/feedback — post review feedback (triggers re-dispatch)`);
-  console.log(`[ws]   POST /api/reset   — reset pipeline`);
-  console.log(`[ws]   GET  /api/health  — health check`);
-  console.log(`[ws]   GET  /api/history — pipeline run history`);
+  console.log(`[ws]   POST /api/reset    — reset pipeline`);
+  console.log(`[ws]   GET  /api/health   — health check`);
+  console.log(`[ws]   GET  /api/history  — pipeline run history`);
+  console.log(`[ws]   WS: chat, approve_plan, reject_plan`);
 });

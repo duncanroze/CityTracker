@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Wifi, WifiOff, Radio, ToggleLeft, ToggleRight, Timer } from 'lucide-react';
+import { Wifi, WifiOff, Radio, Timer } from 'lucide-react';
 import { cn } from '../lib/utils';
 import { DEMO_SCENARIOS } from '../lib/config';
 import { usePipelineSocket, type ConnectionStatus } from '../hooks/usePipelineSocket';
@@ -10,6 +10,7 @@ import ActivityLog from './ActivityLog';
 import RunHistory from './RunHistory';
 import SummaryBanner from './SummaryBanner';
 import AgentDetailPanel from './AgentDetailPanel';
+import ChatInput from './ChatInput';
 import type { AgentId } from '../lib/types';
 
 function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
@@ -30,7 +31,7 @@ function ConnectionIndicator({ status }: { status: ConnectionStatus }) {
 }
 
 export default function AgentDashboard() {
-  const { scenario: liveScenario, runs, connectionStatus } = usePipelineSocket();
+  const { scenario: liveScenario, runs, connectionStatus, streamBuffers, pendingPlan, sendChat, approvePlan, rejectPlan } = usePipelineSocket();
 
   const [mode, setMode] = useState<'live' | 'demo'>('live');
   const [scenarioIdx, setScenarioIdx] = useState(0);
@@ -65,18 +66,6 @@ export default function AgentDashboard() {
 
   const hasError = useMemo(() => Object.values(scenario.state).some(s => s === 'error'), [scenario.state]);
 
-  const toggleAutoApprove = async () => {
-    try {
-      await fetch('http://localhost:3002/api/state', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ autoApprove: !scenario.autoApprove }),
-      });
-    } catch {
-      // Server unreachable
-    }
-  };
-
   const activeCount = Object.values(scenario.state).filter(s => s === 'running').length;
   const completedCount = Object.values(scenario.state).filter(s => s === 'completed').length;
   const errorCount = Object.values(scenario.state).filter(s => s === 'error' || s === 'blocked').length;
@@ -97,11 +86,6 @@ export default function AgentDashboard() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
-          {scenario.autoApprove && (
-            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-500">
-              Auto
-            </span>
-          )}
           {elapsed > 0 && (
             <span className="flex items-center gap-1 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-amber-500">
               <Timer className="h-3 w-3" />
@@ -123,21 +107,6 @@ export default function AgentDashboard() {
               {errorCount} erreur{errorCount > 1 ? 's' : ''}
             </span>
           )}
-          <button
-            onClick={toggleAutoApprove}
-            className={cn(
-              'flex cursor-pointer items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-all duration-200',
-              scenario.autoApprove
-                ? 'border border-emerald-500/30 bg-emerald-500/10 text-emerald-500'
-                : 'border border-border text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {scenario.autoApprove
-              ? <ToggleRight className="h-3.5 w-3.5" />
-              : <ToggleLeft className="h-3.5 w-3.5" />
-            }
-            Mode background
-          </button>
         </div>
       </div>
 
@@ -155,15 +124,19 @@ export default function AgentDashboard() {
         </div>
       )}
 
-      {/* Current Request */}
-      <div className="mb-4 flex items-center gap-2.5 rounded-lg border border-border bg-muted px-4 py-3 text-[13px]">
-        <span className="text-muted-foreground">Demande :</span>
-        <span className="font-medium text-foreground">{scenario.request}</span>
-        {scenario.iterations > 0 && (
-          <span className="ml-auto rounded-lg bg-amber-500/10 px-2 py-0.5 text-[11px] font-semibold text-amber-500">
-            Iteration {scenario.iterations}/{scenario.maxIterations ?? 3}
-          </span>
-        )}
+      {/* Chat Input / Request Display */}
+      <div className="mb-4">
+        <ChatInput
+          status={scenario.status}
+          request={scenario.request}
+          iterations={scenario.iterations}
+          maxIterations={scenario.maxIterations ?? 3}
+          connectionStatus={connectionStatus}
+          pendingPlan={mode === 'live' ? pendingPlan : null}
+          onSend={sendChat}
+          onApprovePlan={approvePlan}
+          onRejectPlan={rejectPlan}
+        />
       </div>
 
       {/* Phase Tracker */}
@@ -269,6 +242,7 @@ export default function AgentDashboard() {
           score={scenario.scores[selectedAgent]}
           logs={scenario.logs}
           feedback={scenario.feedback ?? []}
+          streamBuffer={mode === 'live' ? streamBuffers[selectedAgent] : undefined}
           onClose={() => setSelectedAgent(null)}
         />
       )}

@@ -94,6 +94,8 @@ export const DEMO_SCENARIOS: PipelineScenario[] = [
     autoApprove: true,
     startedAt: null,
     feedback: [],
+    outputs: {},
+    pendingPlan: null,
   },
   {
     name: 'Phase planification',
@@ -112,6 +114,8 @@ export const DEMO_SCENARIOS: PipelineScenario[] = [
     autoApprove: true,
     startedAt: null,
     feedback: [],
+    outputs: {},
+    pendingPlan: null,
   },
   {
     name: 'Execution parallele',
@@ -132,6 +136,8 @@ export const DEMO_SCENARIOS: PipelineScenario[] = [
     autoApprove: true,
     startedAt: null,
     feedback: [],
+    outputs: {},
+    pendingPlan: null,
   },
   {
     name: 'Revue — Probleme detecte',
@@ -151,6 +157,8 @@ export const DEMO_SCENARIOS: PipelineScenario[] = [
     autoApprove: true,
     startedAt: null,
     feedback: [SAMPLE_FEEDBACK],
+    outputs: {},
+    pendingPlan: null,
   },
   {
     name: 'Tests en cours',
@@ -170,6 +178,8 @@ export const DEMO_SCENARIOS: PipelineScenario[] = [
     autoApprove: true,
     startedAt: null,
     feedback: [SAMPLE_FEEDBACK],
+    outputs: {},
+    pendingPlan: null,
   },
   {
     name: 'Pipeline termine',
@@ -188,5 +198,7 @@ export const DEMO_SCENARIOS: PipelineScenario[] = [
     autoApprove: true,
     startedAt: null,
     feedback: [SAMPLE_FEEDBACK],
+    outputs: {},
+    pendingPlan: null,
   },
 ];

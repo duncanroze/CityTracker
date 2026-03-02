@@ -42,7 +42,7 @@ function ItineraireContent() {
   const { stations, loading: stationsLoading, error: stationsError } = useStations();
   const { routes, selectedRoute, selectedIndex, selectRoute, loading: routeLoading, error: routeError, search } = useRoute();
   const disruptions = useDisruptions();
-  const { setRouteOverlay, clearOverlay, setPreviewPin, removePreviewPin, clearPreviewPins } = useMapContext();
+  const { setRouteOverlay, clearOverlay, setPreviewPin, removePreviewPin, clearPreviewPins, lastMapClick, setLastMapClick } = useMapContext();
 
   // Collapsed form state & labels
   const [formCollapsed, setFormCollapsed] = useState(false);
@@ -89,6 +89,46 @@ function ItineraireContent() {
     },
     [setPreviewPin, removePreviewPin],
   );
+
+  // Handle map clicks: reverse geocode → set origin (1st click) or destination (2nd click)
+  useEffect(() => {
+    if (!lastMapClick) return;
+    setLastMapClick(null); // Consume the click
+
+    // Skip if both fields are already filled
+    if (fromSelRef.current && toSelRef.current) return;
+
+    const target: 'from' | 'to' = fromSelRef.current ? 'to' : 'from';
+
+    // Immediately set a preview pin with coordinates while we reverse geocode
+    const pinType = target === 'from' ? 'origin' : 'destination';
+    const tempLabel = `${lastMapClick.lat.toFixed(4)}, ${lastMapClick.lng.toFixed(4)}`;
+    setPreviewPin({ lat: lastMapClick.lat, lng: lastMapClick.lng, label: tempLabel, type: pinType });
+
+    // Reverse geocode
+    fetch(`/api/geocode?lat=${lastMapClick.lat}&lng=${lastMapClick.lng}`)
+      .then(res => res.ok ? res.json() : null)
+      .then((data: { address: string; lat: number; lng: number } | null) => {
+        if (!data) return;
+        const selection: PickerSelection = {
+          type: 'address',
+          lat: data.lat,
+          lng: data.lng,
+          address: data.address,
+        };
+        handleSelectionChange(target, selection);
+      })
+      .catch(() => {
+        // Fallback: use raw coordinates as address
+        const selection: PickerSelection = {
+          type: 'address',
+          lat: lastMapClick.lat,
+          lng: lastMapClick.lng,
+          address: tempLabel,
+        };
+        handleSelectionChange(target, selection);
+      });
+  }, [lastMapClick, setLastMapClick, setPreviewPin, handleSelectionChange]);
 
   // Deep linking: parse URL params and auto-search
   useEffect(() => {

@@ -16,11 +16,18 @@ interface MapOverlay {
   line?: LineWithStations;
 }
 
+export interface MapClickEvent {
+  lat: number;
+  lng: number;
+  ts: number;
+}
+
 interface MapContextValue {
   overlay: MapOverlay;
   dark: boolean;
   previewPins: PreviewPin[];
   drawerSnap: number | null;
+  lastMapClick: MapClickEvent | null;
   setRouteOverlay: (route: RouteResult | null) => void;
   setLineOverlay: (line: LineWithStations | null) => void;
   clearOverlay: () => void;
@@ -29,6 +36,7 @@ interface MapContextValue {
   removePreviewPin: (type: 'origin' | 'destination') => void;
   clearPreviewPins: () => void;
   setDrawerSnap: (snap: number | null) => void;
+  setLastMapClick: (click: MapClickEvent | null) => void;
 }
 
 const MapContext = createContext<MapContextValue | null>(null);
@@ -37,6 +45,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const [overlay, setOverlay] = useState<MapOverlay>({ type: 'none' });
   const [previewPins, setPreviewPins] = useState<PreviewPin[]>([]);
   const [drawerSnap, setDrawerSnap] = useState<number | null>(null);
+  const [lastMapClick, setLastMapClick] = useState<MapClickEvent | null>(null);
   const [dark, setDark] = useState(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('theme');
@@ -84,11 +93,11 @@ export function MapProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      overlay, dark, previewPins, drawerSnap,
+      overlay, dark, previewPins, drawerSnap, lastMapClick,
       setRouteOverlay, setLineOverlay, clearOverlay, setDark,
-      setPreviewPin, removePreviewPin, clearPreviewPins, setDrawerSnap,
+      setPreviewPin, removePreviewPin, clearPreviewPins, setDrawerSnap, setLastMapClick,
     }),
-    [overlay, dark, previewPins, drawerSnap, setRouteOverlay, setLineOverlay, clearOverlay, setDark, setPreviewPin, removePreviewPin, clearPreviewPins, setDrawerSnap],
+    [overlay, dark, previewPins, drawerSnap, lastMapClick, setRouteOverlay, setLineOverlay, clearOverlay, setDark, setPreviewPin, removePreviewPin, clearPreviewPins, setDrawerSnap],
   );
 
   return (

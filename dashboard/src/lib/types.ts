@@ -42,6 +42,19 @@ export interface FeedbackEntry {
   iteration: number;
 }
 
+export interface AgentOutput {
+  agentId: AgentId;
+  content: string;
+  durationMs: number;
+  completedAt: string;
+}
+
+export interface StreamChunk {
+  agentId: AgentId;
+  text: string;
+  done: boolean;
+}
+
 export interface PipelineScenario {
   name: string;
   state: Record<AgentId, AgentStatus>;
@@ -55,6 +68,8 @@ export interface PipelineScenario {
   autoApprove: boolean;
   startedAt: string | null;
   feedback: FeedbackEntry[];
+  outputs: Partial<Record<AgentId, AgentOutput>>;
+  pendingPlan: string | null;
 }
 
 export interface PipelineRun {
@@ -70,4 +85,5 @@ export interface PipelineRun {
   feedbackCount: number;
   logs: PipelineLog[];
   feedback: FeedbackEntry[];
+  outputs: Partial<Record<AgentId, AgentOutput>>;
 }

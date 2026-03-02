@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Polyline, CircleMarker, Tooltip, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Polyline, CircleMarker, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import type { LatLngTuple } from 'leaflet';
 import { useMapContext } from '@/contexts/MapContext';
 
@@ -73,6 +73,18 @@ function MapController({ onZoomChange }: { onZoomChange: (zoom: number) => void 
     }
   }, [previewPins, overlay.type, map]);
 
+  return null;
+}
+
+function MapClickHandler() {
+  const { overlay, setLastMapClick } = useMapContext();
+  useMapEvents({
+    click(e) {
+      // Only handle clicks when no route/line overlay is active
+      if (overlay.type !== 'none') return;
+      setLastMapClick({ lat: e.latlng.lat, lng: e.latlng.lng, ts: Date.now() });
+    },
+  });
   return null;
 }
 
@@ -203,6 +215,7 @@ export default function AppMap() {
       >
         <TileLayer key={dark ? 'dark' : 'light'} attribution={tileAttribution} url={tileUrl} />
         <MapController onZoomChange={setZoom} />
+        <MapClickHandler />
 
         {/* Route overlay */}
         {routeData && (

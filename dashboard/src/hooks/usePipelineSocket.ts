@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import type { PipelineScenario, PipelineRun, FeedbackEntry, AgentId, AgentStatus, PipelinePhase, PipelineLog } from '../lib/types';
+import type { PipelineScenario, PipelineRun, FeedbackEntry, AgentId, AgentStatus, PipelinePhase, PipelineLog, StreamChunk } from '../lib/types';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -27,12 +27,16 @@ const IDLE_SCENARIO: PipelineScenario = {
   autoApprove: true,
   startedAt: null,
   feedback: [],
+  outputs: {},
+  pendingPlan: null,
 };
 
 export function usePipelineSocket() {
   const [scenario, setScenario] = useState<PipelineScenario>({ ...IDLE_SCENARIO, state: { ...IDLE_STATE }, logs: [], scores: { ...IDLE_SCORES } });
   const [runs, setRuns] = useState<PipelineRun[]>([]);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>('disconnected');
+  const [streamBuffers, setStreamBuffers] = useState<Record<string, string>>({});
+  const [pendingPlan, setPendingPlan] = useState<string | null>(null);
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -65,12 +69,23 @@ export function usePipelineSocket() {
             autoApprove: msg.data.autoApprove ?? prev.autoApprove,
             startedAt: msg.data.startedAt ?? prev.startedAt,
             feedback: msg.data.feedback ?? prev.feedback,
+            outputs: msg.data.outputs ?? prev.outputs,
+            pendingPlan: msg.data.pendingPlan ?? null,
           }));
+          // Clear pending plan when status changes from awaiting_approval
+          if (msg.data.status !== 'awaiting_approval') {
+            setPendingPlan(null);
+          }
         } else if (msg.type === 'log') {
-          setScenario(prev => ({
-            ...prev,
-            logs: [...prev.logs, msg.data as PipelineLog],
-          }));
+          setScenario(prev => {
+            const entry = msg.data as PipelineLog;
+            // Deduplicate: skip if last log has same time+agent+msg
+            const last = prev.logs[prev.logs.length - 1];
+            if (last && last.time === entry.time && last.agent === entry.agent && last.msg === entry.msg) {
+              return prev;
+            }
+            return { ...prev, logs: [...prev.logs, entry] };
+          });
         } else if (msg.type === 'feedback') {
           setScenario(prev => ({
             ...prev,
@@ -78,8 +93,22 @@ export function usePipelineSocket() {
           }));
         } else if (msg.type === 'history') {
           setRuns(msg.data as PipelineRun[]);
+        } else if (msg.type === 'stream') {
+          const chunk = msg.data as StreamChunk;
+          if (chunk.done) {
+            // Stream complete for this agent — don't clear buffer
+          } else {
+            setStreamBuffers(prev => ({
+              ...prev,
+              [chunk.agentId]: (prev[chunk.agentId] ?? '') + chunk.text,
+            }));
+          }
+        } else if (msg.type === 'plan_ready') {
+          setPendingPlan(msg.data.plan);
         } else if (msg.type === 'reset') {
-          setScenario({ ...IDLE_SCENARIO, state: { ...IDLE_STATE }, logs: [], scores: { ...IDLE_SCORES }, feedback: [] });
+          setScenario({ ...IDLE_SCENARIO, state: { ...IDLE_STATE }, logs: [], scores: { ...IDLE_SCORES }, feedback: [], outputs: {}, pendingPlan: null });
+          setStreamBuffers({});
+          setPendingPlan(null);
         }
       } catch {
         // Ignore malformed messages
@@ -106,5 +135,26 @@ export function usePipelineSocket() {
     };
   }, [connect]);
 
-  return { scenario, runs, connectionStatus };
+  const sendChat = useCallback((message: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      setStreamBuffers({});
+      wsRef.current.send(JSON.stringify({ type: 'chat', data: { message } }));
+    }
+  }, []);
+
+  const approvePlan = useCallback((plan: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'approve_plan', data: { plan } }));
+      setPendingPlan(null);
+    }
+  }, []);
+
+  const rejectPlan = useCallback(() => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({ type: 'reject_plan' }));
+      setPendingPlan(null);
+    }
+  }, []);
+
+  return { scenario, runs, connectionStatus, streamBuffers, pendingPlan, sendChat, approvePlan, rejectPlan };
 }

@@ -25,6 +25,19 @@ export interface FeedbackEntry {
   iteration: number;
 }
 
+export interface AgentOutput {
+  agentId: AgentId;
+  content: string;
+  durationMs: number;
+  completedAt: string;
+}
+
+export interface StreamChunk {
+  agentId: AgentId;
+  text: string;
+  done: boolean;
+}
+
 export interface PipelineState {
   state: Record<AgentId, AgentStatus>;
   phase: PipelinePhase;
@@ -36,6 +49,8 @@ export interface PipelineState {
   autoApprove: boolean;
   startedAt: string | null;
   feedback: FeedbackEntry[];
+  outputs: Partial<Record<AgentId, AgentOutput>>;
+  pendingPlan: string | null;
 }
 
 export interface PipelineRun {
@@ -51,6 +66,7 @@ export interface PipelineRun {
   feedbackCount: number;
   logs: PipelineLogEntry[];
   feedback: FeedbackEntry[];
+  outputs: Partial<Record<AgentId, AgentOutput>>;
 }
 
 export interface PipelineLogEntry {
@@ -65,7 +81,15 @@ export type WsMessage =
   | { type: 'log'; data: PipelineLogEntry }
   | { type: 'feedback'; data: FeedbackEntry }
   | { type: 'history'; data: PipelineRun[] }
+  | { type: 'stream'; data: StreamChunk }
+  | { type: 'plan_ready'; data: { plan: string } }
   | { type: 'reset' };
+
+// WS messages: client → server
+export type WsClientMessage =
+  | { type: 'chat'; data: { message: string } }
+  | { type: 'approve_plan'; data: { plan: string } }
+  | { type: 'reject_plan' };
 
 // HTTP POST payloads
 export interface StateUpdatePayload {
