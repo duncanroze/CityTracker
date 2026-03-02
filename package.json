@@ -14,7 +14,9 @@
     "db:push": "prisma db push",
     "db:seed": "prisma db seed",
     "postinstall": "prisma generate",
-    "agents:dashboard": "cd dashboard && pnpm dev"
+    "agents:dashboard": "cd dashboard && pnpm dev",
+    "dev:doctor": "./scripts/dev-doctor.sh",
+    "dev:start": "./scripts/dev-start.sh"
   },
   "dependencies": {
     "@prisma/client": "^6.0.0",

@@ -2,6 +2,14 @@
 
 Paris public transport routing application (Metro, RER, Tram, Transilien).
 
+## Project Overview
+
+This is a TypeScript monorepo (CityTracker) using Next.js, Prisma, Neon PostgreSQL, and deployed on Vercel. The primary language is TypeScript — always use TypeScript, not JavaScript.
+
+## Execution Rules
+
+When asked to run a command (docker compose, db:push, deploy, etc.), execute it immediately. Do not enter plan mode or write a plan file unless explicitly asked to plan.
+
 ## Architecture
 
 - **Next.js 16** App Router — single deployable app (frontend + API)
@@ -171,6 +179,10 @@ dashboard/                   # Pipeline monitoring dashboard (dev tool)
 - Map uses CartoDB Light/Dark tiles, TileLayer keyed by theme to force remount on toggle
 - Route option cards: metro-style circle bubbles with line colors; RER/Transilien use rounded rectangles
 
+## Styling / CSS
+
+This project uses Tailwind CSS v4 with `@theme inline` styles. When fixing dark mode issues, note that `@theme inline` declarations take priority over `.dark` CSS variables. Apply dark mode overrides with sufficient specificity or use the correct v4 approach.
+
 ## Real-time Departures & Wait Times
 
 - PRIM (IDFM SIRI Lite) provides real-time next departures per stop
@@ -185,6 +197,10 @@ dashboard/                   # Pipeline monitoring dashboard (dev tool)
 - Severity levels: `ok`, `disrupted`, `interrupted`
 - Results cached for 1 minute
 - Client polls via `useDisruptions` hook
+
+## Database
+
+The database is Neon PostgreSQL in production. Prisma reads `.env` (not `.env.local`). When seeding or migrating, confirm whether the target is the local Docker DB or Neon production DB. For Neon, use an extended transaction timeout (e.g., `--timeout 60000`) to avoid seed timeouts.
 
 ## Database Models
 
@@ -201,6 +217,71 @@ dashboard/                   # Pipeline monitoring dashboard (dev tool)
 | `DATABASE_URL` | PostgreSQL connection string (Neon pooler URL) | Yes |
 | `DIRECT_URL` | PostgreSQL direct URL (for Prisma migrations) | Yes |
 | `PRIM_API_KEY` | IDFM PRIM API key for real-time data | Optional (degrades gracefully) |
+
+## Dev Environment
+
+### Quick Start
+
+```bash
+# First time setup
+cp .env.example .env          # Edit with your credentials
+pnpm install                  # Install deps (runs prisma generate via postinstall)
+cd dashboard && pnpm install  # Dashboard deps (optional)
+cd ..
+
+# Start dev (Neon DB from .env)
+./scripts/dev-start.sh
+
+# Start dev (local Docker PostgreSQL)
+./scripts/dev-start.sh --local-db
+
+# Start dev + pipeline dashboard
+./scripts/dev-start.sh --with-dashboard
+
+# Diagnose environment issues
+./scripts/dev-doctor.sh
+```
+
+### Dev Scripts
+
+| Script | Purpose |
+|---|---|
+| `scripts/dev-doctor.sh` | Diagnose environment issues (Node, pnpm, Docker, DB, ports) |
+| `scripts/dev-start.sh` | Validate prerequisites + start dev server (idempotent) |
+| `scripts/dev-start.sh --local-db` | Use Docker PostgreSQL instead of Neon |
+| `scripts/dev-start.sh --with-dashboard` | Also start pipeline dashboard on :3001/:3002 |
+| `scripts/dev-start.sh --seed` | Force re-seed the database on startup |
+
+### Environment Variables
+
+- `.env` is the primary env file — **Prisma reads `.env`, not `.env.local`**
+- `.env.example` is the template — copy it and fill in values
+- For local Docker DB: `DATABASE_URL=postgresql://citytracker:citytracker@localhost:5432/citytracker`
+- `PRIM_API_KEY` is optional; without it, real-time features degrade gracefully
+
+### Ports
+
+| Port | Service | Notes |
+|---|---|---|
+| 3000 | Next.js dev server | Main application |
+| 3001 | Dashboard Vite | Pipeline monitoring (optional) |
+| 3002 | Dashboard WS server | Pipeline WebSocket (optional) |
+| 5432 | PostgreSQL | Docker container (if using --local-db) |
+
+### Common Issues
+
+- **Docker socket permission denied**: `sudo usermod -aG docker $USER && newgrp docker`
+- **Neon cold start timeout**: First connection after inactivity may take 3-5s; graph builder retries automatically
+- **Port already in use**: `dev-start.sh` auto-kills stale processes; or run `lsof -ti :3000 | xargs kill`
+- **Prisma client not generated**: Run `pnpm db:generate` (normally handled by postinstall)
+- **`.env` vs `.env.local`**: Prisma ONLY reads `.env`. Next.js reads both, but DB credentials must be in `.env`
+- **Neon vs local DB**: Default `.env` points to Neon (production). Use `--local-db` flag or manually set `DATABASE_URL` to localhost
+
+Never spawn multiple dev server instances. Before starting a dev server, check for existing running instances with `lsof -i :3000` (or the relevant port) and kill any zombie processes first.
+
+## Git Workflow
+
+The `gh` CLI may not be available or on PATH. For git operations, prefer direct `git` commands. Do not suggest creating PRs when work is being pushed directly to main.
 
 ## Deployment
 

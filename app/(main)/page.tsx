@@ -51,17 +51,19 @@ function ItineraireContent() {
   const [copied, setCopied] = useState(false);
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites();
 
-  // Track selections for share
+  // Track selections for share + pass to RouteForm
   const fromSelRef = useRef<PickerSelection | null>(null);
   const toSelRef = useRef<PickerSelection | null>(null);
+  const [fromSel, setFromSel] = useState<PickerSelection | null>(null);
+  const [toSel, setToSel] = useState<PickerSelection | null>(null);
   const deepLinkHandled = useRef(false);
 
   // Handle selection changes from RouteForm to show preview pins
   const handleSelectionChange = useCallback(
     (field: 'from' | 'to', selection: PickerSelection | null) => {
       const pinType = field === 'from' ? 'origin' : 'destination';
-      if (field === 'from') fromSelRef.current = selection;
-      else toSelRef.current = selection;
+      if (field === 'from') { fromSelRef.current = selection; setFromSel(selection); }
+      else { toSelRef.current = selection; setToSel(selection); }
 
       // Track labels for collapsed banner
       if (selection) {
@@ -237,6 +239,8 @@ function ItineraireContent() {
             onExpand={() => setFormCollapsed(false)}
             fromLabel={fromLabel}
             toLabel={toLabel}
+            externalFrom={fromSel}
+            externalTo={toSel}
           />
         </div>
         {formCollapsed && selectedRoute && (

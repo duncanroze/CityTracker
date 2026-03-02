@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { ArrowUpDown, Search, Pencil } from 'lucide-react';
 import type { Station, PickerSelection } from '@/types';
 import StationPicker from './StationPicker';
@@ -17,11 +17,21 @@ interface RouteFormProps {
   onExpand?: () => void;
   fromLabel?: string;
   toLabel?: string;
+  externalFrom?: PickerSelection | null;
+  externalTo?: PickerSelection | null;
 }
 
-export default function RouteForm({ stations, loading, onSearch, onSelectionChange, collapsed, onExpand, fromLabel, toLabel }: RouteFormProps) {
+export default function RouteForm({ stations, loading, onSearch, onSelectionChange, collapsed, onExpand, fromLabel, toLabel, externalFrom, externalTo }: RouteFormProps) {
   const [from, setFrom] = useState<PickerSelection | null>(null);
   const [to, setTo] = useState<PickerSelection | null>(null);
+
+  // Sync external selections (e.g. from favorite click) into internal state
+  useEffect(() => {
+    if (externalFrom !== undefined) setFrom(externalFrom);
+  }, [externalFrom]);
+  useEffect(() => {
+    if (externalTo !== undefined) setTo(externalTo);
+  }, [externalTo]);
 
   const handleFromChange = useCallback((selection: PickerSelection | null) => {
     setFrom(selection);
