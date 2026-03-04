@@ -32,6 +32,8 @@ export interface RouteSegment {
   durationSeconds: number;
   nextDepartures?: string[];
   waitTimeSeconds?: number;
+  /** LineStop ID of the first stop — used for departure re-fetching in navigation mode */
+  firstStopLineStopId?: string;
 }
 
 export interface Transfer {
@@ -51,6 +53,21 @@ export interface WalkingLeg {
   stationLng: number;
   durationSeconds: number;
   distanceMeters: number;
+  /** Street-level walking path as [lat, lng] pairs from OSRM */
+  path?: [number, number][];
+}
+
+export interface WalkingDirect {
+  fromAddress: string;
+  fromLat: number;
+  fromLng: number;
+  toAddress: string;
+  toLat: number;
+  toLng: number;
+  distanceMeters: number;
+  durationSeconds: number;
+  /** Street-level walking path as [lat, lng] pairs from OSRM */
+  path?: [number, number][];
 }
 
 export interface RouteResult {
@@ -62,6 +79,8 @@ export interface RouteResult {
   transfers: Transfer[];
   walkingFrom?: WalkingLeg;
   walkingTo?: WalkingLeg;
+  walkingOnly?: boolean;
+  walkingDirect?: WalkingDirect;
 }
 
 export interface LabeledRoute {
@@ -69,9 +88,20 @@ export interface LabeledRoute {
   route: RouteResult;
 }
 
+export interface DirectEstimate {
+  durationSeconds: number;
+  distanceMeters: number;
+  /** Street-level path as [lat, lng] pairs from OSRM */
+  path?: [number, number][];
+}
+
 export interface MultiRouteResult {
   found: boolean;
   routes: LabeledRoute[];
+  /** Direct walking estimate between origin and destination */
+  walkingEstimate?: DirectEstimate;
+  /** Direct cycling estimate between origin and destination */
+  cyclingEstimate?: DirectEstimate;
 }
 
 export interface GeocodeResult {
@@ -103,3 +133,13 @@ export interface LineWithStations {
   textColor: string;
   stations: LineStation[];
 }
+
+// ─── Navigation ───────────────────────────────────────────
+
+export type NavigationPhase =
+  | { type: 'walking_to_station'; segmentIndex: 0 }
+  | { type: 'waiting_for_train'; segmentIndex: number; selectedDepartureIndex: number }
+  | { type: 'riding'; segmentIndex: number; currentStopIndex: number }
+  | { type: 'transfer_walking'; transferIndex: number }
+  | { type: 'walking_to_destination' }
+  | { type: 'arrived' };

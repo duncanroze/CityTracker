@@ -79,3 +79,47 @@ model IdfmStopMapping {
   isStopArea  Boolean  @default(false)
   lineStop    LineStop  @relation(fields: [lineStopId], references: [id], onDelete: Cascade)
 }
+
+model User {
+  id                    String    @id @default(cuid())
+  email                 String    @unique
+  passwordHash          String
+  displayName           String?
+  emailVerified         Boolean   @default(false)
+  verificationCode      String?
+  verificationExpiresAt DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  sessions              Session[]
+  favorites             Favorite[]
+
+  @@index([email])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([token])
+  @@index([userId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fromLat   Float
+  fromLng   Float
+  fromLabel String
+  toLat     Float
+  toLng     Float
+  toLabel   String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, fromLat, fromLng, toLat, toLng])
+  @@index([userId])
+}

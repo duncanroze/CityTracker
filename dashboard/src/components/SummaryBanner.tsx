@@ -1,7 +1,7 @@
 import { cn } from '../lib/utils';
 import { AGENTS } from '../lib/config';
-import { CheckCircle, AlertCircle, Clock, MessageSquare, Trophy, RefreshCw } from 'lucide-react';
-import type { AgentId } from '../lib/types';
+import { CheckCircle, AlertCircle, Clock, MessageSquare, Trophy, RefreshCw, Zap } from 'lucide-react';
+import type { AgentId, AgentOutput } from '../lib/types';
 
 function formatDuration(ms: number): string {
   const s = Math.floor(ms / 1000);
@@ -18,12 +18,19 @@ interface SummaryBannerProps {
   logCount: number;
   iterations?: number;
   feedbackCount?: number;
+  outputs?: Partial<Record<AgentId, AgentOutput>>;
 }
 
-export default function SummaryBanner({ status, durationMs, scores, logCount, iterations = 0, feedbackCount = 0 }: SummaryBannerProps) {
+export default function SummaryBanner({ status, durationMs, scores, logCount, iterations = 0, feedbackCount = 0, outputs = {} }: SummaryBannerProps) {
   const isOk = status === 'completed';
   const activeScores = Object.values(scores).filter(s => s > 0);
   const avg = activeScores.length > 0 ? Math.round(activeScores.reduce((a, b) => a + b, 0) / activeScores.length) : 0;
+
+  const totalTokens = Object.values(outputs).reduce((sum, o) => sum + (o?.totalTokens || 0), 0);
+  const formatTokens = (t: number) => {
+    if (t >= 1000) return `${(t / 1000).toFixed(1)}k`;
+    return String(t);
+  };
 
   return (
     <div
@@ -51,6 +58,12 @@ export default function SummaryBanner({ status, durationMs, scores, logCount, it
           <MessageSquare className="h-3.5 w-3.5" />
           <span className="tabular-nums">{logCount}</span>
         </div>
+        {totalTokens > 0 && (
+          <div className="flex items-center gap-1.5 text-amber-400">
+            <Zap className="h-3.5 w-3.5" />
+            <span className="tabular-nums">{formatTokens(totalTokens)} tok</span>
+          </div>
+        )}
         {iterations > 0 && (
           <div className="flex items-center gap-1.5 text-amber-500">
             <RefreshCw className="h-3.5 w-3.5" />

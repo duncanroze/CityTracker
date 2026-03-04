@@ -12,7 +12,7 @@ const AGENT_TOOLS: Record<AgentId, string[]> = {
   designer: ['Read', 'Edit', 'Write', 'Glob', 'Grep'],  // Frontend code
   backend: ['Read', 'Edit', 'Write', 'Glob', 'Grep'],   // Backend code
   reviewer: ['Read', 'Glob', 'Grep'],                     // Read-only review
-  tester: ['Read', 'Glob', 'Grep', 'Bash'],               // Read + run tests
+  tester: ['Read', 'Edit', 'Write', 'Glob', 'Grep', 'Bash'], // Read + run tests + fix test code
 };
 
 const SYSTEM_PROMPTS: Record<AgentId, string> = {
@@ -122,25 +122,54 @@ Reponds en francais. Structure : Resume, Points positifs, Problemes, Scores.
 Score par agent : "Score designer: XX/100", "Score backend: XX/100"
 Termine par ton propre "Score: XX/100".`,
 
-  tester: `Tu es le Test Engineer du projet CityTracker. Tu as acces aux outils Read, Glob, Grep et Bash pour lire le code et lancer les tests.
+  tester: `Tu es le Test Engineer du projet CityTracker. Tu as acces aux outils Read, Edit, Write, Glob, Grep et Bash pour lire le code, lancer les tests, et corriger les fichiers de test.
 
-IMPORTANT : Tu dois LIRE les fichiers reellement modifies pour evaluer la testabilite. Utilise Bash pour lancer les tests existants (pnpm build, etc.).
+IMPORTANT : Tu ne dois PAS modifier le code applicatif (app/, components/, lib/server/, hooks/ hors __tests__/). Tu peux uniquement modifier les fichiers de test (__tests__/**) pour corriger des erreurs dans les tests eux-memes.
 
-Tu dois :
-1. Lire les fichiers modifies (Read/Glob/Grep)
-2. Verifier que le build passe (Bash: cd /home/droze/CityTracker && pnpm build)
-3. Identifier les tests unitaires necessaires
-4. Identifier les cas limites a tester
-5. Evaluer la testabilite du code
+Framework de test : Vitest avec coverage V8. Les tests sont dans des dossiers __tests__/ a cote du code source.
+- Tests serveur : lib/server/__tests__/*.test.ts (environnement node)
+- Tests hooks React : hooks/__tests__/*.test.tsx (environnement jsdom via commentaire // @vitest-environment jsdom)
+- Mocking : vi.mock() pour les modules, vi.resetModules() pour le state module-level
 
-Si les tests revelent des problemes bloquants, tu DOIS les signaler avec :
-REDISPATCH: [agent] - [raison]
+=== ETAPE 1 : TypeScript Type Check ===
+Lance : cd /home/droze/CityTracker && pnpm typecheck
+Si des erreurs de types apparaissent dans le code applicatif → REDISPATCH vers l'agent concerne.
+Si des erreurs de types apparaissent dans les tests (__tests__/) → corrige-les toi-meme avec Edit.
 
-Exemple : "REDISPATCH: backend - La route /api/stations ne gere pas les parametres invalides"
-Exemple : "REDISPATCH: designer - Le composant crash quand les donnees sont vides"
+=== ETAPE 2 : Tests Vitest avec Coverage ===
+Lance : cd /home/droze/CityTracker && pnpm test:coverage
+Analyse les resultats :
+- Nombre de tests passes / echoues
+- Pourcentage de couverture par fichier
+- Messages d'erreur des tests echoues
 
-Reponds en francais. Structure : Plan de test, Tests critiques, Resultats, Score.
-Termine par "Score: XX/100" pour evaluer la couverture de test globale.`,
+=== ETAPE 3 : Analyse et Action ===
+Pour chaque test echoue, determine la cause :
+
+A) Erreur dans le code de test (import manquant, mock incorrect, assertion fausse) :
+   → Corrige le test directement avec Edit/Write
+   → Relance pnpm test:coverage pour verifier ta correction
+
+B) Erreur dans le code applicatif (bug, regression, type error dans le code source) :
+   → REDISPATCH vers l'agent responsable :
+   - designer : problemes dans components/, hooks/ (hors __tests__/), contexts/, app/(main)/
+   - backend : problemes dans lib/server/ (hors __tests__/), app/api/, types/
+
+C) Build failure (pnpm typecheck echoue) :
+   → REDISPATCH vers l'agent responsable du fichier en erreur
+
+=== ETAPE 4 : Rapport ===
+Resume tes resultats :
+- TypeCheck : OK ou FAIL (nombre d'erreurs)
+- Tests : X passed, Y failed sur Z total
+- Coverage : XX% global (detail par fichier modifie)
+- Actions prises : corrections de tests effectuees, redispatches envoyes
+
+Exemples de REDISPATCH :
+"REDISPATCH: backend - La fonction findRoute retourne un objet sans le champ totalStations"
+"REDISPATCH: designer - Le hook useFavorites ne gere pas le cas ou localStorage est plein"
+
+Reponds en francais. Termine par "Score: XX/100" base sur la qualite des tests et la couverture.`,
 };
 
 export interface StreamCallbacks {
@@ -161,9 +190,12 @@ interface AgentOutput {
   content: string;
   durationMs: number;
   completedAt: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
 }
 
-const AGENT_TIMEOUT_MS = 300_000; // 5 minutes per agent
+const AGENT_TIMEOUT_MS = 900_000; // 15 minutes per agent
 
 export async function streamAgent(
   agentId: AgentId,
@@ -173,6 +205,8 @@ export async function streamAgent(
 ): Promise<void> {
   const startTime = Date.now();
   let fullContent = '';
+  let inputTokens = 0;
+  let outputTokens = 0;
 
   // Build prompt: system prompt + context + user request
   const parts = [
@@ -254,13 +288,18 @@ export async function streamAgent(
           }
         }
 
-        // Handle result event (final output)
-        if (event.type === 'result' && event.result) {
-          const newText = event.result.slice(fullContent.length);
-          if (newText) {
-            fullContent = event.result;
-            callbacks.onChunk({ agentId, text: newText, done: false });
+        // Handle result event (final output with token usage)
+        if (event.type === 'result') {
+          if (event.result) {
+            const newText = event.result.slice(fullContent.length);
+            if (newText) {
+              fullContent = event.result;
+              callbacks.onChunk({ agentId, text: newText, done: false });
+            }
           }
+          // Capture token usage from result event
+          if (event.input_tokens) inputTokens += event.input_tokens;
+          if (event.output_tokens) outputTokens += event.output_tokens;
         }
       } catch {
         // Skip non-JSON lines
@@ -282,11 +321,13 @@ export async function streamAgent(
         const timeStr = [now.getHours(), now.getMinutes(), now.getSeconds()]
           .map(n => String(n).padStart(2, '0'))
           .join(':');
+        const totalTokens = inputTokens + outputTokens;
         callbacks.onComplete({
           agentId,
           content: fullContent,
           durationMs: Date.now() - startTime,
           completedAt: timeStr,
+          ...(totalTokens > 0 && { inputTokens, outputTokens, totalTokens }),
         });
         resolve();
       } else if (code !== 0) {

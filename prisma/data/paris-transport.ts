@@ -30,7 +30,8 @@ export interface ConnectionPair {
   stationSlugA: string;
   lineCodeB: string;
   stationSlugB: string;
-  walkingTime: number;
+  walkingTime: number;       // A → B direction (seconds)
+  walkingTimeReverse?: number; // B → A direction (seconds), defaults to walkingTime if omitted
 }
 
 // ── Lines (30) ─────────────────────────────────────────────────────────
@@ -1540,47 +1541,47 @@ export const lineStopSequences: LineStopSequence[] = [
 ];
 
 // ── Walking connections ───────────────────────────────────────────────
-// Times sourced from IDFM GTFS transfers.txt (Feb 2026) — official Île-de-France
-// Mobilités data. Values are average min_transfer_time across platform directions.
+// Times sourced from IDFM GTFS transfers.txt — official Île-de-France Mobilités data.
+// walkingTime = A→B direction, walkingTimeReverse = B→A direction (omitted when symmetric).
 
 export const connectionPairs: ConnectionPair[] = [
-  // ── Châtelet (M1, M4, M7, M11, M14) ─ Lines run N→S: 4-14-1-11-7 ──
-  { lineCodeA: "M1",  stationSlugA: "chatelet", lineCodeB: "M4",  stationSlugB: "chatelet", walkingTime: 113 },
-  { lineCodeA: "M1",  stationSlugA: "chatelet", lineCodeB: "M7",  stationSlugB: "chatelet", walkingTime: 286 },
-  { lineCodeA: "M1",  stationSlugA: "chatelet", lineCodeB: "M11", stationSlugB: "chatelet", walkingTime: 242 },
-  { lineCodeA: "M1",  stationSlugA: "chatelet", lineCodeB: "M14", stationSlugB: "chatelet", walkingTime: 300 },
-  { lineCodeA: "M4",  stationSlugA: "chatelet", lineCodeB: "M7",  stationSlugB: "chatelet", walkingTime: 262 },
-  { lineCodeA: "M4",  stationSlugA: "chatelet", lineCodeB: "M11", stationSlugB: "chatelet", walkingTime: 372 },
+  // ── Châtelet (M1, M4, M7, M11, M14) ─ IDFM GTFS ─────────────────
+  { lineCodeA: "M1",  stationSlugA: "chatelet", lineCodeB: "M4",  stationSlugB: "chatelet", walkingTime: 89, walkingTimeReverse: 93 },
+  { lineCodeA: "M1",  stationSlugA: "chatelet", lineCodeB: "M7",  stationSlugB: "chatelet", walkingTime: 255, walkingTimeReverse: 284 },
+  { lineCodeA: "M1",  stationSlugA: "chatelet", lineCodeB: "M11", stationSlugB: "chatelet", walkingTime: 210, walkingTimeReverse: 240 },
+  { lineCodeA: "M1",  stationSlugA: "chatelet", lineCodeB: "M14", stationSlugB: "chatelet", walkingTime: 420, walkingTimeReverse: 180 },
+  { lineCodeA: "M4",  stationSlugA: "chatelet", lineCodeB: "M7",  stationSlugB: "chatelet", walkingTime: 255, walkingTimeReverse: 248 },
+  { lineCodeA: "M4",  stationSlugA: "chatelet", lineCodeB: "M11", stationSlugB: "chatelet", walkingTime: 300, walkingTimeReverse: 360 },
   { lineCodeA: "M4",  stationSlugA: "chatelet", lineCodeB: "M14", stationSlugB: "chatelet", walkingTime: 180 },
-  { lineCodeA: "M7",  stationSlugA: "chatelet", lineCodeB: "M11", stationSlugB: "chatelet", walkingTime: 245 },
+  { lineCodeA: "M7",  stationSlugA: "chatelet", lineCodeB: "M11", stationSlugB: "chatelet", walkingTime: 123, walkingTimeReverse: 250 },
   { lineCodeA: "M7",  stationSlugA: "chatelet", lineCodeB: "M14", stationSlugB: "chatelet", walkingTime: 360 },
   { lineCodeA: "M11", stationSlugA: "chatelet", lineCodeB: "M14", stationSlugB: "chatelet", walkingTime: 420 },
 
-  // ── République (M3, M5, M8, M9, M11) ───────────────────────────────
-  { lineCodeA: "M3",  stationSlugA: "republique", lineCodeB: "M5",  stationSlugB: "republique", walkingTime: 112 },
+  // ── République (M3, M5, M8, M9, M11) ─ IDFM GTFS ─────────────────
+  { lineCodeA: "M3",  stationSlugA: "republique", lineCodeB: "M5",  stationSlugB: "republique", walkingTime: 76, walkingTimeReverse: 60 },
   { lineCodeA: "M3",  stationSlugA: "republique", lineCodeB: "M8",  stationSlugB: "republique", walkingTime: 180 },
-  { lineCodeA: "M3",  stationSlugA: "republique", lineCodeB: "M9",  stationSlugB: "republique", walkingTime: 119 },
+  { lineCodeA: "M3",  stationSlugA: "republique", lineCodeB: "M9",  stationSlugB: "republique", walkingTime: 109, walkingTimeReverse: 101 },
   { lineCodeA: "M3",  stationSlugA: "republique", lineCodeB: "M11", stationSlugB: "republique", walkingTime: 180 },
   { lineCodeA: "M5",  stationSlugA: "republique", lineCodeB: "M8",  stationSlugB: "republique", walkingTime: 180 },
-  { lineCodeA: "M5",  stationSlugA: "republique", lineCodeB: "M9",  stationSlugB: "republique", walkingTime: 128 },
+  { lineCodeA: "M5",  stationSlugA: "republique", lineCodeB: "M9",  stationSlugB: "republique", walkingTime: 105, walkingTimeReverse: 124 },
   { lineCodeA: "M5",  stationSlugA: "republique", lineCodeB: "M11", stationSlugB: "republique", walkingTime: 180 },
   { lineCodeA: "M8",  stationSlugA: "republique", lineCodeB: "M9",  stationSlugB: "republique", walkingTime: 180 },
   { lineCodeA: "M8",  stationSlugA: "republique", lineCodeB: "M11", stationSlugB: "republique", walkingTime: 180 },
   { lineCodeA: "M9",  stationSlugA: "republique", lineCodeB: "M11", stationSlugB: "republique", walkingTime: 180 },
 
-  // ── Nation (M1, M2, M6, M9, RER-A) ─────────────────────────────────
-  { lineCodeA: "M1", stationSlugA: "nation", lineCodeB: "M2",    stationSlugB: "nation", walkingTime: 84 },
-  { lineCodeA: "M1", stationSlugA: "nation", lineCodeB: "M6",    stationSlugB: "nation", walkingTime: 104 },
-  { lineCodeA: "M1", stationSlugA: "nation", lineCodeB: "M9",    stationSlugB: "nation", walkingTime: 162 },
-  { lineCodeA: "M1", stationSlugA: "nation", lineCodeB: "RER-A", stationSlugB: "nation", walkingTime: 242 },
-  { lineCodeA: "M2", stationSlugA: "nation", lineCodeB: "M6",    stationSlugB: "nation", walkingTime: 116 },
-  { lineCodeA: "M2", stationSlugA: "nation", lineCodeB: "M9",    stationSlugB: "nation", walkingTime: 167 },
-  { lineCodeA: "M2", stationSlugA: "nation", lineCodeB: "RER-A", stationSlugB: "nation", walkingTime: 210 },
+  // ── Nation (M1, M2, M6, M9, RER-A) ─ IDFM GTFS ───────────────────
+  { lineCodeA: "M1", stationSlugA: "nation", lineCodeB: "M2",    stationSlugB: "nation", walkingTime: 80, walkingTimeReverse: 72 },
+  { lineCodeA: "M1", stationSlugA: "nation", lineCodeB: "M6",    stationSlugB: "nation", walkingTime: 90 },
+  { lineCodeA: "M1", stationSlugA: "nation", lineCodeB: "M9",    stationSlugB: "nation", walkingTime: 136, walkingTimeReverse: 153 },
+  { lineCodeA: "M1", stationSlugA: "nation", lineCodeB: "RER-A", stationSlugB: "nation", walkingTime: 230 },
+  { lineCodeA: "M2", stationSlugA: "nation", lineCodeB: "M6",    stationSlugB: "nation", walkingTime: 90 },
+  { lineCodeA: "M2", stationSlugA: "nation", lineCodeB: "M9",    stationSlugB: "nation", walkingTime: 122, walkingTimeReverse: 149 },
+  { lineCodeA: "M2", stationSlugA: "nation", lineCodeB: "RER-A", stationSlugB: "nation", walkingTime: 200 },
   { lineCodeA: "M6", stationSlugA: "nation", lineCodeB: "M9",    stationSlugB: "nation", walkingTime: 200 },
   { lineCodeA: "M6", stationSlugA: "nation", lineCodeB: "RER-A", stationSlugB: "nation", walkingTime: 200 },
-  { lineCodeA: "M9", stationSlugA: "nation", lineCodeB: "RER-A", stationSlugB: "nation", walkingTime: 173 },
+  { lineCodeA: "M9", stationSlugA: "nation", lineCodeB: "RER-A", stationSlugB: "nation", walkingTime: 153 },
 
-  // ── Charles de Gaulle — Étoile (M1, M2, M6, RER-A) ─ M1/M6 side-by-side
+  // ── Charles de Gaulle — Étoile (M1, M2, M6, RER-A) ────────────────
   { lineCodeA: "M1", stationSlugA: "charles-de-gaulle-etoile", lineCodeB: "M2",    stationSlugB: "charles-de-gaulle-etoile", walkingTime: 71 },
   { lineCodeA: "M1", stationSlugA: "charles-de-gaulle-etoile", lineCodeB: "M6",    stationSlugB: "charles-de-gaulle-etoile", walkingTime: 46 },
   { lineCodeA: "M1", stationSlugA: "charles-de-gaulle-etoile", lineCodeB: "RER-A", stationSlugB: "charles-de-gaulle-etoile", walkingTime: 316 },
@@ -1588,13 +1589,13 @@ export const connectionPairs: ConnectionPair[] = [
   { lineCodeA: "M2", stationSlugA: "charles-de-gaulle-etoile", lineCodeB: "RER-A", stationSlugB: "charles-de-gaulle-etoile", walkingTime: 240 },
   { lineCodeA: "M6", stationSlugA: "charles-de-gaulle-etoile", lineCodeB: "RER-A", stationSlugB: "charles-de-gaulle-etoile", walkingTime: 229 },
 
-  // ── Montparnasse — Bienvenüe (M4, M6, M12, M13) ─ two poles: 4/12 north, 6/13 south
-  { lineCodeA: "M4",  stationSlugA: "montparnasse-bienvenue", lineCodeB: "M6",  stationSlugB: "montparnasse-bienvenue", walkingTime: 394 },
+  // ── Montparnasse — Bienvenüe (M4, M6, M12, M13) ─ IDFM GTFS ──────
+  { lineCodeA: "M4",  stationSlugA: "montparnasse-bienvenue", lineCodeB: "M6",  stationSlugB: "montparnasse-bienvenue", walkingTime: 367, walkingTimeReverse: 368 },
   { lineCodeA: "M4",  stationSlugA: "montparnasse-bienvenue", lineCodeB: "M12", stationSlugB: "montparnasse-bienvenue", walkingTime: 108 },
-  { lineCodeA: "M4",  stationSlugA: "montparnasse-bienvenue", lineCodeB: "M13", stationSlugB: "montparnasse-bienvenue", walkingTime: 360 },
-  { lineCodeA: "M6",  stationSlugA: "montparnasse-bienvenue", lineCodeB: "M12", stationSlugB: "montparnasse-bienvenue", walkingTime: 372 },
-  { lineCodeA: "M6",  stationSlugA: "montparnasse-bienvenue", lineCodeB: "M13", stationSlugB: "montparnasse-bienvenue", walkingTime: 121 },
-  { lineCodeA: "M12", stationSlugA: "montparnasse-bienvenue", lineCodeB: "M13", stationSlugB: "montparnasse-bienvenue", walkingTime: 323 },
+  { lineCodeA: "M4",  stationSlugA: "montparnasse-bienvenue", lineCodeB: "M13", stationSlugB: "montparnasse-bienvenue", walkingTime: 289, walkingTimeReverse: 311 },
+  { lineCodeA: "M6",  stationSlugA: "montparnasse-bienvenue", lineCodeB: "M12", stationSlugB: "montparnasse-bienvenue", walkingTime: 293, walkingTimeReverse: 396 },
+  { lineCodeA: "M6",  stationSlugA: "montparnasse-bienvenue", lineCodeB: "M13", stationSlugB: "montparnasse-bienvenue", walkingTime: 101, walkingTimeReverse: 126 },
+  { lineCodeA: "M12", stationSlugA: "montparnasse-bienvenue", lineCodeB: "M13", stationSlugB: "montparnasse-bienvenue", walkingTime: 235, walkingTimeReverse: 241 },
 
   // ── Saint-Lazare (M3, M12, M13, M14) ───────────────────────────────
   { lineCodeA: "M3",  stationSlugA: "saint-lazare", lineCodeB: "M12", stationSlugB: "saint-lazare", walkingTime: 262 },
@@ -1612,10 +1613,10 @@ export const connectionPairs: ConnectionPair[] = [
   { lineCodeA: "M5",    stationSlugA: "gare-du-nord", lineCodeB: "RER-D", stationSlugB: "gare-du-nord", walkingTime: 117 },
   { lineCodeA: "RER-B", stationSlugA: "gare-du-nord", lineCodeB: "RER-D", stationSlugB: "gare-du-nord", walkingTime: 60 },
 
-  // ── Gare de Lyon (M1, M14, RER-A, RER-D) ───────────────────────────
-  { lineCodeA: "M1",    stationSlugA: "gare-de-lyon", lineCodeB: "M14",   stationSlugB: "gare-de-lyon", walkingTime: 375 },
-  { lineCodeA: "M1",    stationSlugA: "gare-de-lyon", lineCodeB: "RER-A", stationSlugB: "gare-de-lyon", walkingTime: 233 },
-  { lineCodeA: "M1",    stationSlugA: "gare-de-lyon", lineCodeB: "RER-D", stationSlugB: "gare-de-lyon", walkingTime: 233 },
+  // ── Gare de Lyon (M1, M14, RER-A, RER-D) ─ IDFM GTFS ─────────────
+  { lineCodeA: "M1",    stationSlugA: "gare-de-lyon", lineCodeB: "M14",   stationSlugB: "gare-de-lyon", walkingTime: 240, walkingTimeReverse: 420 },
+  { lineCodeA: "M1",    stationSlugA: "gare-de-lyon", lineCodeB: "RER-A", stationSlugB: "gare-de-lyon", walkingTime: 219 },
+  { lineCodeA: "M1",    stationSlugA: "gare-de-lyon", lineCodeB: "RER-D", stationSlugB: "gare-de-lyon", walkingTime: 219 },
   { lineCodeA: "M14",   stationSlugA: "gare-de-lyon", lineCodeB: "RER-A", stationSlugB: "gare-de-lyon", walkingTime: 180 },
   { lineCodeA: "M14",   stationSlugA: "gare-de-lyon", lineCodeB: "RER-D", stationSlugB: "gare-de-lyon", walkingTime: 180 },
   { lineCodeA: "RER-A", stationSlugA: "gare-de-lyon", lineCodeB: "RER-D", stationSlugB: "gare-de-lyon", walkingTime: 60 },
@@ -1625,8 +1626,8 @@ export const connectionPairs: ConnectionPair[] = [
   { lineCodeA: "M4", stationSlugA: "gare-de-l-est", lineCodeB: "M7", stationSlugB: "gare-de-l-est", walkingTime: 89 },
   { lineCodeA: "M5", stationSlugA: "gare-de-l-est", lineCodeB: "M7", stationSlugB: "gare-de-l-est", walkingTime: 52 },
 
-  // ── Opéra (M3, M7, M8) ─────────────────────────────────────────────
-  { lineCodeA: "M3", stationSlugA: "opera", lineCodeB: "M7", stationSlugB: "opera", walkingTime: 126 },
+  // ── Opéra (M3, M7, M8) ─ IDFM GTFS ────────────────────────────────
+  { lineCodeA: "M3", stationSlugA: "opera", lineCodeB: "M7", stationSlugB: "opera", walkingTime: 125, walkingTimeReverse: 88 },
   { lineCodeA: "M3", stationSlugA: "opera", lineCodeB: "M8", stationSlugB: "opera", walkingTime: 180 },
   { lineCodeA: "M7", stationSlugA: "opera", lineCodeB: "M8", stationSlugB: "opera", walkingTime: 180 },
 
@@ -1635,9 +1636,9 @@ export const connectionPairs: ConnectionPair[] = [
   { lineCodeA: "M1", stationSlugA: "bastille", lineCodeB: "M8", stationSlugB: "bastille", walkingTime: 180 },
   { lineCodeA: "M5", stationSlugA: "bastille", lineCodeB: "M8", stationSlugB: "bastille", walkingTime: 180 },
 
-  // ── Strasbourg — Saint-Denis (M4, M8, M9) ──────────────────────────
+  // ── Strasbourg — Saint-Denis (M4, M8, M9) ─ IDFM GTFS ────────────
   { lineCodeA: "M4", stationSlugA: "strasbourg-saint-denis", lineCodeB: "M8", stationSlugB: "strasbourg-saint-denis", walkingTime: 180 },
-  { lineCodeA: "M4", stationSlugA: "strasbourg-saint-denis", lineCodeB: "M9", stationSlugB: "strasbourg-saint-denis", walkingTime: 110 },
+  { lineCodeA: "M4", stationSlugA: "strasbourg-saint-denis", lineCodeB: "M9", stationSlugB: "strasbourg-saint-denis", walkingTime: 63, walkingTimeReverse: 107 },
   { lineCodeA: "M8", stationSlugA: "strasbourg-saint-denis", lineCodeB: "M9", stationSlugB: "strasbourg-saint-denis", walkingTime: 180 },
 
   // ── Place d'Italie (M5, M6, M7) ────────────────────────────────────
@@ -1655,9 +1656,9 @@ export const connectionPairs: ConnectionPair[] = [
   { lineCodeA: "M8",  stationSlugA: "madeleine", lineCodeB: "M14", stationSlugB: "madeleine", walkingTime: 180 },
   { lineCodeA: "M12", stationSlugA: "madeleine", lineCodeB: "M14", stationSlugB: "madeleine", walkingTime: 180 },
 
-  // ── La Motte-Picquet — Grenelle (M6, M8, M10) ──────────────────────
+  // ── La Motte-Picquet — Grenelle (M6, M8, M10) ─ IDFM GTFS ────────
   { lineCodeA: "M6",  stationSlugA: "la-motte-picquet-grenelle", lineCodeB: "M8",  stationSlugB: "la-motte-picquet-grenelle", walkingTime: 180 },
-  { lineCodeA: "M6",  stationSlugA: "la-motte-picquet-grenelle", lineCodeB: "M10", stationSlugB: "la-motte-picquet-grenelle", walkingTime: 150 },
+  { lineCodeA: "M6",  stationSlugA: "la-motte-picquet-grenelle", lineCodeB: "M10", stationSlugB: "la-motte-picquet-grenelle", walkingTime: 133, walkingTimeReverse: 157 },
   { lineCodeA: "M8",  stationSlugA: "la-motte-picquet-grenelle", lineCodeB: "M10", stationSlugB: "la-motte-picquet-grenelle", walkingTime: 180 },
 
   // ── Invalides (M8, M13, RER-C) ─────────────────────────────────────

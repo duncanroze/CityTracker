@@ -1,6 +1,6 @@
 import { cn } from '../lib/utils';
 import { AGENTS } from '../lib/config';
-import { History, Clock, MessageSquare, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { History, Clock, MessageSquare, RefreshCw, ChevronDown, ChevronUp, Zap } from 'lucide-react';
 import { useState } from 'react';
 import RunDetailModal from './RunDetailModal';
 import type { PipelineRun } from '../lib/types';
@@ -50,6 +50,9 @@ export default function RunHistory({ runs }: RunHistoryProps) {
           {displayRuns.map((run) => {
             const avgScore = Object.values(run.scores).filter(s => s > 0);
             const avg = avgScore.length > 0 ? Math.round(avgScore.reduce((a, b) => a + b, 0) / avgScore.length) : 0;
+            const runTokens = run.outputs
+              ? Object.values(run.outputs).reduce((sum, o) => sum + (o?.totalTokens || 0), 0)
+              : 0;
 
             return (
               <div
@@ -88,6 +91,14 @@ export default function RunHistory({ runs }: RunHistoryProps) {
                     <MessageSquare className="h-3 w-3" />
                     <span className="tabular-nums">{run.logCount}</span>
                   </div>
+                  {runTokens > 0 && (
+                    <div className="flex items-center gap-0.5 text-amber-400">
+                      <Zap className="h-3 w-3" />
+                      <span className="tabular-nums text-[10px]">
+                        {runTokens >= 1000 ? `${(runTokens / 1000).toFixed(1)}k` : runTokens}
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-0.5">
                     <Clock className="h-3 w-3" />
                     <span className="tabular-nums">{formatDuration(run.durationMs)}</span>

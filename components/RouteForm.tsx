@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { ArrowUpDown, Search, Pencil } from 'lucide-react';
 import type { Station, PickerSelection } from '@/types';
 import StationPicker from './StationPicker';
+import GeolocationButton from './GeolocationButton';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -91,7 +92,12 @@ export default function RouteForm({ stations, loading, onSearch, onSelectionChan
     <Card className="py-4 gap-0 animate-in fade-in duration-200">
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-2">
-          <StationPicker label="Départ" stations={stations} selected={from} onSelect={handleFromChange} />
+          <div className="flex items-end gap-1.5">
+            <div className="flex-1 min-w-0">
+              <StationPicker label="Départ" stations={stations} selected={from} onSelect={handleFromChange} />
+            </div>
+            <GeolocationButton onPositionResolved={handleFromChange} className="mb-[1px]" />
+          </div>
 
           <div className="flex justify-center -my-1">
             <Button

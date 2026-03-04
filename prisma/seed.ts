@@ -110,11 +110,11 @@ async function main() {
           toLineStopId: toId,
           walkingTime: pair.walkingTime,
         });
-        // B → A
+        // B → A (use reverse time if specified, otherwise same)
         connectionData.push({
           fromLineStopId: toId,
           toLineStopId: fromId,
-          walkingTime: pair.walkingTime,
+          walkingTime: pair.walkingTimeReverse ?? pair.walkingTime,
         });
       }
 

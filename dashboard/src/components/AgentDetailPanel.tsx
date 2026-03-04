@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
-import { X, MessageSquare, RotateCcw, AlertTriangle, Info } from 'lucide-react';
+import { X, MessageSquare, RotateCcw, AlertTriangle, Info, Clock, Zap } from 'lucide-react';
 import { AGENTS, STATUS_CONFIG } from '../lib/config';
 import { cn } from '../lib/utils';
-import type { AgentId, AgentStatus, PipelineLog, FeedbackEntry } from '../lib/types';
+import type { AgentId, AgentStatus, PipelineLog, FeedbackEntry, AgentOutput } from '../lib/types';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface AgentDetailPanelProps {
   agentId: AgentId;
@@ -10,6 +11,7 @@ interface AgentDetailPanelProps {
   score: number;
   logs: PipelineLog[];
   feedback: FeedbackEntry[];
+  output?: AgentOutput;
   streamBuffer?: string;
   onClose: () => void;
 }
@@ -20,17 +22,27 @@ const SEVERITY_STYLE = {
   blocking: { icon: AlertTriangle, color: 'text-red-400', bg: 'bg-red-500/10', border: 'border-red-500/30' },
 };
 
-export default function AgentDetailPanel({ agentId, status, score, logs, feedback, streamBuffer, onClose }: AgentDetailPanelProps) {
+export default function AgentDetailPanel({ agentId, status, score, logs, feedback, output, streamBuffer, onClose }: AgentDetailPanelProps) {
   const agent = AGENTS.find(a => a.id === agentId);
   const cfg = STATUS_CONFIG[status];
   const panelRef = useRef<HTMLDivElement>(null);
-  const streamRef = useRef<HTMLPreElement>(null);
+  const streamRef = useRef<HTMLDivElement>(null);
 
   // Filter logs for this agent
   const agentLogs = logs.filter(l => l.agent === agentId);
 
   // Feedback involving this agent (sent by or targeting)
   const agentFeedback = feedback.filter(f => f.from === agentId || f.target.includes(agentId));
+
+  const formatTokens = (t: number) => {
+    if (t >= 1000) return `${(t / 1000).toFixed(1)}k`;
+    return String(t);
+  };
+
+  const hasTokenStats = output && (output.inputTokens || output.outputTokens || output.totalTokens);
+  const ratio = output?.inputTokens && output?.outputTokens
+    ? (output.outputTokens / output.inputTokens).toFixed(2)
+    : null;
 
   // Auto-scroll stream output
   useEffect(() => {
@@ -106,7 +118,7 @@ export default function AgentDetailPanel({ agentId, status, score, logs, feedbac
         </div>
 
         {/* Stats */}
-        <div className="flex gap-4 border-b border-border px-5 py-3">
+        <div className="flex flex-wrap gap-3 border-b border-border px-5 py-3">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <MessageSquare className="h-3.5 w-3.5" />
             <span className="tabular-nums font-medium">{agentLogs.length}</span> messages
@@ -117,7 +129,65 @@ export default function AgentDetailPanel({ agentId, status, score, logs, feedbac
               <span className="tabular-nums font-medium">{agentFeedback.length}</span> feedback
             </div>
           )}
+          {output?.durationMs !== undefined && (
+            <div className="flex items-center gap-1.5 text-xs text-blue-400">
+              <Clock className="h-3.5 w-3.5" />
+              <span className="tabular-nums font-medium">{(output.durationMs / 1000).toFixed(1)}s</span>
+            </div>
+          )}
+          {hasTokenStats && (
+            <div className="flex items-center gap-1.5 text-xs text-amber-400">
+              <Zap className="h-3.5 w-3.5" />
+              <span className="tabular-nums font-medium">
+                {output.totalTokens ? formatTokens(output.totalTokens) :
+                  `${formatTokens(output.inputTokens || 0)} + ${formatTokens(output.outputTokens || 0)}`} tok
+              </span>
+            </div>
+          )}
         </div>
+
+        {/* Detailed Stats Section (tokens) */}
+        {hasTokenStats && (
+          <div className="border-b border-border px-5 py-3.5">
+            <div className="mb-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Statistiques de consommation
+            </div>
+            <div className="grid grid-cols-2 gap-2.5">
+              {output.inputTokens !== undefined && (
+                <div className="rounded-lg border border-border bg-muted px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Input</div>
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-foreground">
+                    {formatTokens(output.inputTokens)}
+                  </div>
+                </div>
+              )}
+              {output.outputTokens !== undefined && (
+                <div className="rounded-lg border border-border bg-muted px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Output</div>
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-foreground">
+                    {formatTokens(output.outputTokens)}
+                  </div>
+                </div>
+              )}
+              {output.totalTokens !== undefined && (
+                <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wide text-amber-500/80">Total</div>
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-amber-500">
+                    {formatTokens(output.totalTokens)}
+                  </div>
+                </div>
+              )}
+              {ratio && (
+                <div className="rounded-lg border border-border bg-muted px-3 py-2">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Ratio out/in</div>
+                  <div className="mt-0.5 text-sm font-bold tabular-nums text-foreground">
+                    {ratio}×
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto">
@@ -127,12 +197,12 @@ export default function AgentDetailPanel({ agentId, status, score, logs, feedbac
               <div className="mb-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                 Output agent {status === 'running' && <span className="ml-1 animate-pulse text-amber-400">(streaming...)</span>}
               </div>
-              <pre
+              <div
                 ref={streamRef}
-                className="max-h-[300px] overflow-y-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-[11px] text-foreground/85"
+                className="max-h-[300px] overflow-y-auto rounded-lg border border-border bg-muted p-3"
               >
-                {streamBuffer}
-              </pre>
+                <MarkdownRenderer className="text-[11px]">{streamBuffer}</MarkdownRenderer>
+              </div>
             </div>
           )}
 

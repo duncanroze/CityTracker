@@ -298,9 +298,12 @@ function routeFingerprint(route: RouteResult): string {
   return route.segments.map((s) => s.lineCode).sort().join(',');
 }
 
+export type RouteStrategy = 'fastest' | 'fewest_transfers' | 'least_walking';
+
 export async function findRoutes(
   fromStationId: string,
   toStationId: string,
+  strategy: RouteStrategy = 'fastest',
 ): Promise<MultiRouteResult> {
   const seen = new Set<string>();
   const candidates: RouteResult[] = [];
@@ -327,14 +330,12 @@ export async function findRoutes(
   }
 
   // 3. Iteratively discover alternatives by excluding middle lines.
-  //    Each round collects middle lines from ALL known routes (including
-  //    routes found in previous rounds), then tries exclusion combos.
   const processedExclusions = new Set<string>();
   let lastCandidateCount = 0;
 
   for (let round = 0; round < 3; round++) {
     if (candidates.length >= MAX_ROUTES * 2) break;
-    if (candidates.length === lastCandidateCount && round > 0) break; // no new routes found
+    if (candidates.length === lastCandidateCount && round > 0) break;
     lastCandidateCount = candidates.length;
 
     const allMiddle = [
@@ -346,20 +347,15 @@ export async function findRoutes(
       ),
     ];
 
-    // Try excluding pairs (includes singles when paired with themselves via individual loop)
     const exclusionSets: Set<string>[] = [
-      // Each individual middle line
       ...allMiddle.map((l) => new Set([l])),
-      // Each pair
       ...allMiddle.flatMap((a, i) =>
         allMiddle.slice(i + 1).map((b) => new Set([a, b])),
       ),
-      // All middle lines of each route
       ...candidates.map((c) => {
         const codes = c.segments.map((s) => s.lineCode);
         return new Set(codes.slice(1, -1));
       }),
-      // All middle lines combined
       new Set(allMiddle),
     ];
 
@@ -373,8 +369,22 @@ export async function findRoutes(
     }
   }
 
-  // Sort strictly by duration and keep top N
-  candidates.sort((a, b) => a.totalDurationSeconds - b.totalDurationSeconds);
+  // Sort candidates based on strategy, always tie-break by duration
+  const transferWalkTime = (r: RouteResult) =>
+    r.transfers.reduce((sum, t) => sum + t.walkingTimeSeconds, 0);
+
+  if (strategy === 'fewest_transfers') {
+    candidates.sort((a, b) =>
+      a.totalTransfers - b.totalTransfers || a.totalDurationSeconds - b.totalDurationSeconds,
+    );
+  } else if (strategy === 'least_walking') {
+    candidates.sort((a, b) =>
+      transferWalkTime(a) - transferWalkTime(b) || a.totalDurationSeconds - b.totalDurationSeconds,
+    );
+  } else {
+    candidates.sort((a, b) => a.totalDurationSeconds - b.totalDurationSeconds);
+  }
+
   const topRoutes = candidates.slice(0, MAX_ROUTES);
 
   return {

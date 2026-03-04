@@ -29,6 +29,12 @@ pnpm db:generate          # prisma generate
 pnpm db:migrate           # prisma migrate dev
 pnpm db:seed              # prisma db seed (seed.ts + seed-idfm.ts)
 
+# Testing
+pnpm typecheck            # TypeScript type check (tsc --noEmit)
+pnpm test                 # Run tests once (vitest run)
+pnpm test:watch           # Run tests in watch mode
+pnpm test:coverage        # Run tests with coverage report
+
 # Build & Production
 pnpm build                # next build
 pnpm start                # next start
@@ -79,6 +85,13 @@ components/
   TransferIndicator.tsx     # Walking transfer indicator
   LineBadge.tsx             # Line badge with disruption dot
   MobileDrawer.tsx          # Responsive drawer for mobile view
+  NavigationView.tsx        # Navigation mode wrapper (header, ETA, progress, step card)
+  NavigationStepCard.tsx    # Phase-specific step card (walking, waiting, riding, transfer, arrived)
+  NavigationProgress.tsx    # Progress dots for navigation phases
+  NavigationRouteDetail.tsx # Full route timeline with live progress highlighting
+  DepartureChips.tsx        # Real-time departure time chips with reachability styling
+  DescentAlert.tsx          # Alert banner when approaching exit station
+  DevSimulatorPanel.tsx     # DEV-only floating panel for route position simulator
 
 contexts/
   MapContext.tsx            # Map overlay state, dark mode, map clicks, preview pins (React Context)
@@ -90,9 +103,13 @@ hooks/
   useDisruptions.ts         # Disruption polling (fetch /api/disruptions)
   useGeocode.ts             # Reverse geocoding (fetch /api/geocode)
   useFavorites.ts           # Favorite routes (localStorage, max 10)
+  useNavigation.ts          # Navigation phase machine (geolocation → phase transitions)
+  useGeolocation.ts         # Browser Geolocation API wrapper (watchPosition)
+  useRouteSimulator.ts      # DEV-only route position simulator playback hook
 
 lib/
   utils.ts                  # cn() utility (clsx + tailwind-merge)
+  route-simulator.ts        # Pure logic: build waypoint path from RouteResult, interpolate position
   server/
     prisma.ts               # Prisma client singleton (globalThis pattern)
     env.ts                  # Zod env validation (DATABASE_URL, PRIM_API_KEY)
@@ -153,6 +170,16 @@ dashboard/                   # Pipeline monitoring dashboard (dev tool)
 - Graph build retries 3 times with exponential backoff (2s, 4s, 6s) to handle Neon cold starts
 - `@/*` path alias resolves from project root
 - React Leaflet loaded via `next/dynamic` with `ssr: false` (Leaflet requires `window`)
+
+## Testing
+
+- **Framework**: Vitest with V8 coverage
+- **Test location**: Collocated `__tests__/` directories next to source files
+- **Naming**: `*.test.ts` for server tests, `*.test.tsx` for React tests
+- **Environment**: `node` by default (server); `jsdom` per-file for React hooks/components via `// @vitest-environment jsdom`
+- **Path alias**: `@/*` configured in `vitest.config.ts` (mirrors `tsconfig.json`)
+- **Mocking**: Use `vi.mock()` for module-level mocks; `vi.resetModules()` for module-scoped state
+- **Key test suites**: pathfinder (Dijkstra routing), headways (cache + defaults), disruptions (API parsing), useFavorites (localStorage)
 
 ## Multi-Branch Line Rendering
 
@@ -332,6 +359,57 @@ The `gh` CLI may not be available or on PATH. For git operations, prefer direct 
 - Forward: returns `{ results: [{ address, lat, lng }] }`
 - Reverse: returns `{ address, lat, lng }`
 
+## Navigation System
+
+Turn-by-turn navigation that tracks the user's real position and guides them through the route.
+
+### Phase Machine (`useNavigation.ts`)
+Navigation progresses through phases based on geolocation:
+- `walking_to_station` → user walks to first metro station
+- `waiting_for_train` → user is at station, waiting for departure
+- `riding` → user is on the train, tracking stops passed
+- `transfer_walking` → user walks between platforms during transfer
+- `walking_to_destination` → user walks from last station to destination
+- `arrived` → user reached destination
+
+Phase transitions use **position-based detection** (distance to stops) rather than time-based, which is critical for the accelerated simulator to work correctly.
+
+### Departure Chips & Reachability
+- `DepartureChips` shows up to 5 upcoming departures per segment
+- Each chip displays countdown + absolute time (e.g., "3 min · 14h43")
+- Reachability states based on ETA at station:
+  - **reachable** (2+ min margin): emerald styling
+  - **tight** (0-2 min margin): amber warning styling
+  - **unreachable** (departure before ETA): dimmed + line-through, still clickable
+- Auto-selects best reachable departure once per phase transition (doesn't override manual selection)
+- During `riding`, pre-fetches next segment departures with ETA to transfer platform
+
+### Descent Alert
+- Browser notification + in-app banner when 1 stop away from exit station
+- Dismissible with X button, toned-down styling (no bounce animation)
+
+### Components
+- `NavigationView` — wrapper with header, ETA (adjusted for selected departure), progress dots
+- `NavigationStepCard` — phase-specific card with departure info, transfer timing, walking instructions
+- `NavigationRouteDetail` — full route timeline with completed/current/future highlighting
+- `NavigationProgress` — dot progress indicator across all phases
+
+## Route Simulator (DEV-only)
+
+Fake GPS movement along the active route for testing navigation without physically moving.
+
+### Architecture
+1. **Pure logic** (`lib/route-simulator.ts`): `buildSimPath()` stitches route into waypoints, `interpolatePosition()` linearly interpolates lat/lng over elapsed time
+2. **React hook** (`hooks/useRouteSimulator.ts`): tick loop (50ms), speed multiplier, emits positions via same functions as real geolocation
+3. **UI panel** (`components/DevSimulatorPanel.tsx`): floating panel with play/pause, speed chips (1x/2x/5x/10x/20x/50x), progress bar
+
+### Key Design Decisions
+- Simulator calls `setUserPosition()` + `navigation.updatePosition()` — same pipeline as real geolocation
+- When simulator is active, real geo bridge effect in `page.tsx` short-circuits
+- Synthetic departures injected on simulation start (relative to `Date.now()`, not cumulative travel time) to avoid drift at accelerated speeds
+- Departure refresh generates fresh synthetic times when PRIM returns no data
+- Loaded via `next/dynamic` only when `NODE_ENV === 'development'`; tree-shaken from production build
+
 ## Pipeline Dashboard (Development Tool)
 
 Separate Vite + React app in `dashboard/` for multi-agent pipeline execution. Agents use **Claude Code CLI** (`claude -p`) — no API credits needed, uses the Claude Max subscription.
@@ -356,7 +434,7 @@ The pipeline uses `claude -p --output-format stream-json --verbose --model sonne
 | `designer` | Read, Edit, Write, Glob, Grep | Implement frontend changes |
 | `backend` | Read, Edit, Write, Glob, Grep | Implement backend changes |
 | `reviewer` | Read, Glob, Grep | Code review (read-only) |
-| `tester` | Read, Glob, Grep, Bash | Run tests + verify build |
+| `tester` | Read, Edit, Write, Glob, Grep, Bash | Run typecheck + Vitest, fix test issues, verify build |
 
 #### Pipeline Flow
 1. User submits request via chat

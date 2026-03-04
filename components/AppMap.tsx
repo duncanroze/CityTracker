@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Polyline, CircleMarker, Tooltip, useMap, useMapEvents } from 'react-leaflet';
+import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { MapContainer, TileLayer, Polyline, CircleMarker, Circle, Marker, Tooltip, useMap, useMapEvents } from 'react-leaflet';
 import type { LatLngTuple } from 'leaflet';
+import L from 'leaflet';
 import { useMapContext } from '@/contexts/MapContext';
 
 function MapController({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
@@ -33,9 +34,16 @@ function MapController({ onZoomChange }: { onZoomChange: (zoom: number) => void 
     const points: LatLngTuple[] = [];
 
     if (overlay.type === 'route' && overlay.route) {
-      for (const seg of overlay.route.segments) {
-        for (const stop of seg.stops) {
-          points.push([stop.lat, stop.lng]);
+      // Walking-only route
+      if (overlay.route.walkingOnly && overlay.route.walkingDirect) {
+        const wd = overlay.route.walkingDirect;
+        points.push([wd.fromLat, wd.fromLng]);
+        points.push([wd.toLat, wd.toLng]);
+      } else {
+        for (const seg of overlay.route.segments) {
+          for (const stop of seg.stops) {
+            points.push([stop.lat, stop.lng]);
+          }
         }
       }
       // Include walking leg endpoints in bounds
@@ -76,20 +84,87 @@ function MapController({ onZoomChange }: { onZoomChange: (zoom: number) => void 
   return null;
 }
 
+function createPinIcon(color: string) {
+  return L.divIcon({
+    className: '',
+    html: `<svg width="20" height="28" viewBox="0 0 28 38" fill="none" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.35));cursor:grab">
+      <path d="M14 0C6.268 0 0 6.268 0 14c0 10.5 14 24 14 24s14-13.5 14-24C28 6.268 21.732 0 14 0z" fill="${color}"/>
+      <circle cx="14" cy="14" r="7" fill="white" opacity="0.25"/>
+      <circle cx="14" cy="14" r="4.5" fill="white"/>
+    </svg>`,
+    iconSize: [20, 28],
+    iconAnchor: [10, 28],
+    tooltipAnchor: [0, -24],
+  });
+}
+
+const originPinIcon = createPinIcon('#16a34a');
+const destinationPinIcon = createPinIcon('#dc2626');
+
+const userPositionIcon = L.divIcon({
+  className: '',
+  html: `
+    <div style="position:relative;width:24px;height:24px;">
+      <div class="user-position-pulse" style="position:absolute;inset:0;border-radius:50%;background:rgba(59,130,246,0.4);"></div>
+      <div style="position:absolute;top:4px;left:4px;width:16px;height:16px;border-radius:50%;background:#3b82f6;border:3px solid white;box-shadow:0 0 4px rgba(0,0,0,0.3);"></div>
+    </div>
+  `,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
+function UserPositionMarker() {
+  const { userPosition } = useMapContext();
+  if (!userPosition) return null;
+
+  return (
+    <>
+      <Circle
+        center={[userPosition.lat, userPosition.lng]}
+        radius={userPosition.accuracy}
+        pathOptions={{ color: '#3b82f6', fillColor: '#3b82f680', fillOpacity: 0.12, weight: 1 }}
+      />
+      <Marker position={[userPosition.lat, userPosition.lng]} icon={userPositionIcon} />
+    </>
+  );
+}
+
 function MapClickHandler() {
   const { overlay, setLastMapClick } = useMapContext();
-  useMapEvents({
-    click(e) {
-      // Only handle clicks when no route/line overlay is active
+  const map = useMapEvents({
+    dblclick(e) {
+      // Only handle double-clicks when no route/line overlay is active
       if (overlay.type !== 'none') return;
       setLastMapClick({ lat: e.latlng.lat, lng: e.latlng.lng, ts: Date.now() });
     },
   });
+
+  // Disable default double-click zoom behavior
+  useEffect(() => {
+    map.doubleClickZoom.disable();
+    return () => {
+      map.doubleClickZoom.enable(); // Cleanup on unmount
+    };
+  }, [map]);
+
   return null;
 }
 
+function shortAddress(address: string): string {
+  const banMatch = address.match(/^(.+?)\s+\d{5}\s/);
+  if (banMatch) return banMatch[1];
+  const parts = address.split(',');
+  if (parts.length >= 2) return parts.slice(0, 2).join(',').trim();
+  return address;
+}
+
 export default function AppMap() {
-  const { overlay, dark, previewPins } = useMapContext();
+  const { overlay, dark, previewPins, setLastPinDrag } = useMapContext();
+
+  const handlePinDragEnd = useCallback((type: 'origin' | 'destination', e: L.DragEndEvent) => {
+    const latlng = (e.target as L.Marker).getLatLng();
+    setLastPinDrag({ lat: latlng.lat, lng: latlng.lng, type, ts: Date.now() });
+  }, [setLastPinDrag]);
 
   const tileUrl = dark
     ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
@@ -102,6 +177,37 @@ export default function AppMap() {
   const routeData = useMemo(() => {
     if (overlay.type !== 'route' || !overlay.route) return null;
     const route = overlay.route;
+
+    // Walking-only route: dotted line along streets from A to B
+    if (route.walkingOnly && route.walkingDirect) {
+      const wd = route.walkingDirect;
+      const origin: { position: LatLngTuple; name: string } = {
+        position: [wd.fromLat, wd.fromLng],
+        name: shortAddress(wd.fromAddress),
+      };
+      const destination: { position: LatLngTuple; name: string } = {
+        position: [wd.toLat, wd.toLng],
+        name: shortAddress(wd.toAddress),
+      };
+      const mins = Math.round(wd.durationSeconds / 60);
+      const positions: LatLngTuple[] = wd.path && wd.path.length > 0
+        ? wd.path.map(([lat, lng]): LatLngTuple => [lat, lng])
+        : [origin.position, destination.position];
+      return {
+        segments: [],
+        stops: [],
+        transfers: [],
+        walkingLines: [{
+          positions,
+          label: `${mins > 0 ? `${mins} min` : '< 1 min'}`,
+        }],
+        walkFromPin: null,
+        walkToPin: null,
+        origin,
+        destination,
+        allPoints: positions,
+      };
+    }
 
     const segments = route.segments.map((seg) => ({
       positions: seg.stops.map((s): LatLngTuple => [s.lat, s.lng]),
@@ -131,26 +237,30 @@ export default function AppMap() {
       });
     }
 
-    // Walking legs
-    const walkingLines: { from: LatLngTuple; to: LatLngTuple; label: string }[] = [];
+    // Walking legs (with OSRM street-level paths when available)
+    const walkingLines: { positions: LatLngTuple[]; label: string }[] = [];
     let walkFromPin: { position: LatLngTuple; name: string } | null = null;
     let walkToPin: { position: LatLngTuple; name: string } | null = null;
 
     if (route.walkingFrom) {
       const wf = route.walkingFrom;
-      walkFromPin = { position: [wf.lat, wf.lng], name: wf.address.split(',')[0] };
+      walkFromPin = { position: [wf.lat, wf.lng], name: shortAddress(wf.address) };
+      const positions: LatLngTuple[] = wf.path && wf.path.length > 0
+        ? wf.path.map(([lat, lng]): LatLngTuple => [lat, lng])
+        : [[wf.lat, wf.lng], [wf.stationLat, wf.stationLng]];
       walkingLines.push({
-        from: [wf.lat, wf.lng],
-        to: [wf.stationLat, wf.stationLng],
+        positions,
         label: `${Math.round(wf.durationSeconds / 60)} min`,
       });
     }
     if (route.walkingTo) {
       const wt = route.walkingTo;
-      walkToPin = { position: [wt.lat, wt.lng], name: wt.address.split(',')[0] };
+      walkToPin = { position: [wt.lat, wt.lng], name: shortAddress(wt.address) };
+      const positions: LatLngTuple[] = wt.path && wt.path.length > 0
+        ? wt.path.map(([lat, lng]): LatLngTuple => [lat, lng])
+        : [[wt.stationLat, wt.stationLng], [wt.lat, wt.lng]];
       walkingLines.push({
-        from: [wt.stationLat, wt.stationLng],
-        to: [wt.lat, wt.lng],
+        positions,
         label: `${Math.round(wt.durationSeconds / 60)} min`,
       });
     }
@@ -209,6 +319,9 @@ export default function AppMap() {
       <MapContainer
         center={[48.8566, 2.3522]}
         zoom={12}
+        minZoom={9}
+        maxBounds={[[48.1, 1.4], [49.3, 3.6]]}
+        maxBoundsViscosity={0.8}
         style={{ height: '100%', width: '100%' }}
         scrollWheelZoom={true}
         zoomControl={true}
@@ -216,6 +329,7 @@ export default function AppMap() {
         <TileLayer key={dark ? 'dark' : 'light'} attribution={tileAttribution} url={tileUrl} />
         <MapController onZoomChange={setZoom} />
         <MapClickHandler />
+        <UserPositionMarker />
 
         {/* Route overlay */}
         {routeData && (
@@ -234,11 +348,11 @@ export default function AppMap() {
                 pathOptions={{ color: '#9ca3af', weight: 3, dashArray: '8, 8', opacity: 0.7 }}
               />
             ))}
-            {/* Walking leg lines */}
+            {/* Walking leg lines (street-level paths) */}
             {routeData.walkingLines.map((wl, i) => (
               <Polyline
                 key={`walk-${i}`}
-                positions={[wl.from, wl.to]}
+                positions={wl.positions}
                 pathOptions={{ color: '#6b7280', weight: 3, dashArray: '6, 8', opacity: 0.7 }}
               />
             ))}
@@ -266,26 +380,28 @@ export default function AppMap() {
                 )}
               </CircleMarker>
             ))}
-            {/* Origin marker */}
-            <CircleMarker
-              center={routeData.origin.position}
-              radius={8}
-              pathOptions={{ color: '#16a34a', fillColor: '#22c55e', fillOpacity: 1, weight: 3 }}
+            {/* Origin pin */}
+            <Marker
+              position={routeData.origin.position}
+              icon={originPinIcon}
+              draggable
+              eventHandlers={{ dragend: (e) => handlePinDragEnd('origin', e) }}
             >
-              <Tooltip permanent direction="top" offset={[0, -10]} className="station-label">
+              <Tooltip permanent direction="top" offset={[0, 0]} className="station-label">
                 <span style={tooltipStyle}>{routeData.origin.name}</span>
               </Tooltip>
-            </CircleMarker>
-            {/* Destination marker */}
-            <CircleMarker
-              center={routeData.destination.position}
-              radius={8}
-              pathOptions={{ color: '#dc2626', fillColor: '#ef4444', fillOpacity: 1, weight: 3 }}
+            </Marker>
+            {/* Destination pin */}
+            <Marker
+              position={routeData.destination.position}
+              icon={destinationPinIcon}
+              draggable
+              eventHandlers={{ dragend: (e) => handlePinDragEnd('destination', e) }}
             >
-              <Tooltip permanent direction="top" offset={[0, -10]} className="station-label">
+              <Tooltip permanent direction="top" offset={[0, 0]} className="station-label">
                 <span style={tooltipStyle}>{routeData.destination.name}</span>
               </Tooltip>
-            </CircleMarker>
+            </Marker>
           </>
         )}
 
@@ -327,21 +443,17 @@ export default function AppMap() {
 
         {/* Preview pins (shown before route search) */}
         {!routeData && previewPins.map((pin) => (
-          <CircleMarker
+          <Marker
             key={`preview-${pin.type}`}
-            center={[pin.lat, pin.lng]}
-            radius={8}
-            pathOptions={{
-              color: pin.type === 'origin' ? '#16a34a' : '#dc2626',
-              fillColor: pin.type === 'origin' ? '#22c55e' : '#ef4444',
-              fillOpacity: 1,
-              weight: 3,
-            }}
+            position={[pin.lat, pin.lng]}
+            icon={pin.type === 'origin' ? originPinIcon : destinationPinIcon}
+            draggable
+            eventHandlers={{ dragend: (e) => handlePinDragEnd(pin.type, e) }}
           >
-            <Tooltip permanent direction="top" offset={[0, -10]} className="station-label">
+            <Tooltip permanent direction="top" offset={[0, 0]} className="station-label">
               <span style={tooltipStyle}>{pin.label}</span>
             </Tooltip>
-          </CircleMarker>
+          </Marker>
         ))}
       </MapContainer>
     </div>

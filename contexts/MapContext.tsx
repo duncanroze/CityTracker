@@ -22,12 +22,27 @@ export interface MapClickEvent {
   ts: number;
 }
 
+export interface PinDragEvent {
+  lat: number;
+  lng: number;
+  type: 'origin' | 'destination';
+  ts: number;
+}
+
+export interface UserPosition {
+  lat: number;
+  lng: number;
+  accuracy: number;
+}
+
 interface MapContextValue {
   overlay: MapOverlay;
   dark: boolean;
   previewPins: PreviewPin[];
   drawerSnap: number | null;
   lastMapClick: MapClickEvent | null;
+  lastPinDrag: PinDragEvent | null;
+  userPosition: UserPosition | null;
   setRouteOverlay: (route: RouteResult | null) => void;
   setLineOverlay: (line: LineWithStations | null) => void;
   clearOverlay: () => void;
@@ -37,6 +52,8 @@ interface MapContextValue {
   clearPreviewPins: () => void;
   setDrawerSnap: (snap: number | null) => void;
   setLastMapClick: (click: MapClickEvent | null) => void;
+  setLastPinDrag: (drag: PinDragEvent | null) => void;
+  setUserPosition: (pos: UserPosition | null) => void;
 }
 
 const MapContext = createContext<MapContextValue | null>(null);
@@ -46,6 +63,8 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const [previewPins, setPreviewPins] = useState<PreviewPin[]>([]);
   const [drawerSnap, setDrawerSnap] = useState<number | null>(null);
   const [lastMapClick, setLastMapClick] = useState<MapClickEvent | null>(null);
+  const [lastPinDrag, setLastPinDrag] = useState<PinDragEvent | null>(null);
+  const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
   const [dark, setDark] = useState(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('theme');
@@ -93,11 +112,11 @@ export function MapProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo(
     () => ({
-      overlay, dark, previewPins, drawerSnap, lastMapClick,
+      overlay, dark, previewPins, drawerSnap, lastMapClick, lastPinDrag, userPosition,
       setRouteOverlay, setLineOverlay, clearOverlay, setDark,
-      setPreviewPin, removePreviewPin, clearPreviewPins, setDrawerSnap, setLastMapClick,
+      setPreviewPin, removePreviewPin, clearPreviewPins, setDrawerSnap, setLastMapClick, setLastPinDrag, setUserPosition,
     }),
-    [overlay, dark, previewPins, drawerSnap, lastMapClick, setRouteOverlay, setLineOverlay, clearOverlay, setDark, setPreviewPin, removePreviewPin, clearPreviewPins, setDrawerSnap],
+    [overlay, dark, previewPins, drawerSnap, lastMapClick, lastPinDrag, userPosition, setRouteOverlay, setLineOverlay, clearOverlay, setDark, setPreviewPin, removePreviewPin, clearPreviewPins, setDrawerSnap],
   );
 
   return (

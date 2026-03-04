@@ -8,6 +8,7 @@ import { TooltipProvider } from '@/components/ui/tooltip';
 import { MapProvider, useMapContext } from '@/contexts/MapContext';
 import AppNav from '@/components/AppNav';
 import MobileDrawer from '@/components/MobileDrawer';
+import UserMenu from '@/components/UserMenu';
 
 function useIsMobile() {
   const [isMobile, setIsMobile] = useState(false);
@@ -50,7 +51,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
               <AppNav />
             </div>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <Button
               variant="ghost"
               size="icon-sm"
@@ -59,6 +60,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
             >
               {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </Button>
+            <UserMenu />
           </div>
         </div>
       </header>

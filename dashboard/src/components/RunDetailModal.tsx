@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Clock, MessageSquare, RefreshCw, AlertTriangle, Info, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, Clock, MessageSquare, RefreshCw, AlertTriangle, Info, ChevronDown, ChevronRight, Zap } from 'lucide-react';
 import { AGENTS } from '../lib/config';
 import { cn } from '../lib/utils';
 import type { PipelineRun, AgentId } from '../lib/types';
+import { MarkdownRenderer } from './MarkdownRenderer';
 
 interface RunDetailModalProps {
   run: PipelineRun;
@@ -55,6 +56,15 @@ export default function RunDetailModal({ run, onClose }: RunDetailModalProps) {
     return scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
   })();
 
+  const totalTokens = run.outputs
+    ? Object.values(run.outputs).reduce((sum, o) => sum + (o?.totalTokens || 0), 0)
+    : 0;
+
+  const formatTokens = (t: number) => {
+    if (t >= 1000) return `${(t / 1000).toFixed(1)}k`;
+    return String(t);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-150">
       <div
@@ -97,6 +107,12 @@ export default function RunDetailModal({ run, onClose }: RunDetailModalProps) {
                 <MessageSquare className="h-3 w-3" />
                 {run.logCount} logs
               </span>
+              {totalTokens > 0 && (
+                <span className="flex items-center gap-1 text-amber-400">
+                  <Zap className="h-3 w-3" />
+                  {formatTokens(totalTokens)} tok
+                </span>
+              )}
             </div>
           </div>
           <button
@@ -165,11 +181,16 @@ export default function RunDetailModal({ run, onClose }: RunDetailModalProps) {
                         <span className="text-[11px] text-muted-foreground">
                           {(output.durationMs / 1000).toFixed(1)}s
                         </span>
+                        {output.totalTokens && output.totalTokens > 0 && (
+                          <span className="text-[11px] text-amber-400">
+                            {formatTokens(output.totalTokens)} tok
+                          </span>
+                        )}
                       </button>
                       {isExpanded && (
-                        <pre className="max-h-[300px] overflow-y-auto border-t border-border bg-card px-3 py-2 font-mono text-[11px] text-foreground/85 whitespace-pre-wrap">
-                          {output.content}
-                        </pre>
+                        <div className="max-h-[300px] overflow-y-auto border-t border-border bg-card px-3 py-2">
+                          <MarkdownRenderer className="text-[11px]">{output.content}</MarkdownRenderer>
+                        </div>
                       )}
                     </div>
                   );

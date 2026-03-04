@@ -5,14 +5,47 @@ import { useSearchParams } from 'next/navigation';
 import { useStations } from '@/hooks/useStations';
 import { useRoute } from '@/hooks/useRoute';
 import { useDisruptions } from '@/hooks/useDisruptions';
+import { useNavigation } from '@/hooks/useNavigation';
+import { useGeolocation } from '@/hooks/useGeolocation';
 import { useMapContext } from '@/contexts/MapContext';
-import type { PickerSelection } from '@/types';
+import type { PickerSelection, RouteResult, WalkingDirect, DirectEstimate } from '@/types';
 import RouteForm from '@/components/RouteForm';
 import RouteOptions from '@/components/RouteOptions';
 import RouteResultView from '@/components/RouteResult';
+import NavigationView from '@/components/NavigationView';
+import AlternativeModes from '@/components/AlternativeModes';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Navigation, Share2, Check, Star, X } from 'lucide-react';
+import { Navigation, Share2, Check, Star, X, Locate, Radar } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useRouteSimulator } from '@/hooks/useRouteSimulator';
+import dynamic from 'next/dynamic';
+
+const DevSimulatorPanel = process.env.NODE_ENV === 'development'
+  ? dynamic(() => import('@/components/DevSimulatorPanel'), { ssr: false })
+  : () => null;
+
+/**
+ * Inject initial synthetic departure times into a route for dev simulation.
+ * Uses short fixed intervals from now — the departure refresh effect will
+ * regenerate fresh times on each phase change so they stay realistic.
+ */
+function injectSyntheticDepartures(route: RouteResult): RouteResult {
+  const segments = route.segments.map((seg) => {
+    return { ...seg, nextDepartures: makeSyntheticDepartures(), waitTimeSeconds: 60 };
+  });
+  return { ...route, segments };
+}
+
+function makeSyntheticDepartures(): string[] {
+  const now = Date.now();
+  return [
+    new Date(now + 60_000).toISOString(),   // +1 min
+    new Date(now + 240_000).toISOString(),  // +4 min
+    new Date(now + 420_000).toISOString(),  // +7 min
+    new Date(now + 600_000).toISOString(),  // +10 min
+    new Date(now + 780_000).toISOString(),  // +13 min
+  ];
+}
 
 function buildShareUrl(fromSel: PickerSelection, toSel: PickerSelection): string {
   const params = new URLSearchParams();
@@ -40,15 +73,48 @@ export default function ItinerairePage() {
 function ItineraireContent() {
   const searchParams = useSearchParams();
   const { stations, loading: stationsLoading, error: stationsError } = useStations();
-  const { routes, selectedRoute, selectedIndex, selectRoute, loading: routeLoading, error: routeError, search } = useRoute();
+  const { routes, selectedRoute, selectedIndex, selectRoute, loading: routeLoading, error: routeError, search, walkingEstimate, cyclingEstimate, strategy, changeStrategy } = useRoute();
   const disruptions = useDisruptions();
-  const { setRouteOverlay, clearOverlay, setPreviewPin, removePreviewPin, clearPreviewPins, lastMapClick, setLastMapClick } = useMapContext();
+  const navigation = useNavigation();
+  const geo = useGeolocation();
+  const { setRouteOverlay, clearOverlay, setPreviewPin, removePreviewPin, clearPreviewPins, lastMapClick, setLastMapClick, lastPinDrag, setLastPinDrag, setUserPosition } = useMapContext();
+  const simulator = useRouteSimulator({ setUserPosition, updateNavPosition: navigation.updatePosition });
+
+  // Feed geolocation updates to navigation + map
+  useEffect(() => {
+    if (simulator.active) return; // Simulator overrides real geo
+    if (!geo.position) return;
+    setUserPosition({ lat: geo.position.lat, lng: geo.position.lng, accuracy: geo.accuracy ?? 50 });
+    if (navigation.active) {
+      navigation.updatePosition(geo.position.lat, geo.position.lng);
+    }
+  }, [geo.position, geo.accuracy, navigation.active, navigation.updatePosition, setUserPosition, simulator.active]);
+
+  // Start/stop geolocation tracking with navigation lifecycle
+  useEffect(() => {
+    if (navigation.active) {
+      geo.startTracking();
+    } else {
+      geo.stopTracking();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigation.active]);
+
+  const handleStartNavigation = useCallback(() => {
+    if (!selectedRoute) return;
+    // Request notification permission for descent alerts
+    if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    navigation.startNavigation(selectedRoute.route);
+  }, [selectedRoute, navigation]);
 
   // Collapsed form state & labels
   const [formCollapsed, setFormCollapsed] = useState(false);
   const [fromLabel, setFromLabel] = useState('');
   const [toLabel, setToLabel] = useState('');
   const [copied, setCopied] = useState(false);
+  const [activeAltMode, setActiveAltMode] = useState<'walking' | 'cycling' | null>(null);
   const { favorites, addFavorite, removeFavorite, isFavorite } = useFavorites();
 
   // Track selections for share + pass to RouteForm
@@ -91,12 +157,18 @@ function ItineraireContent() {
   );
 
   // Handle map clicks: reverse geocode → set origin (1st click) or destination (2nd click)
+  const mapClickAbortRef = useRef<AbortController | null>(null);
   useEffect(() => {
     if (!lastMapClick) return;
     setLastMapClick(null); // Consume the click
 
     // Skip if both fields are already filled
     if (fromSelRef.current && toSelRef.current) return;
+
+    // Abort any in-flight reverse geocode
+    mapClickAbortRef.current?.abort();
+    const controller = new AbortController();
+    mapClickAbortRef.current = controller;
 
     const target: 'from' | 'to' = fromSelRef.current ? 'to' : 'from';
 
@@ -106,7 +178,7 @@ function ItineraireContent() {
     setPreviewPin({ lat: lastMapClick.lat, lng: lastMapClick.lng, label: tempLabel, type: pinType });
 
     // Reverse geocode
-    fetch(`/api/geocode?lat=${lastMapClick.lat}&lng=${lastMapClick.lng}`)
+    fetch(`/api/geocode?lat=${lastMapClick.lat}&lng=${lastMapClick.lng}`, { signal: controller.signal })
       .then(res => res.ok ? res.json() : null)
       .then((data: { address: string; lat: number; lng: number } | null) => {
         if (!data) return;
@@ -118,7 +190,8 @@ function ItineraireContent() {
         };
         handleSelectionChange(target, selection);
       })
-      .catch(() => {
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
         // Fallback: use raw coordinates as address
         const selection: PickerSelection = {
           type: 'address',
@@ -129,6 +202,37 @@ function ItineraireContent() {
         handleSelectionChange(target, selection);
       });
   }, [lastMapClick, setLastMapClick, setPreviewPin, handleSelectionChange]);
+
+  // Handle pin drag: reverse geocode → update the corresponding field
+  const pinDragAbortRef = useRef<AbortController | null>(null);
+  useEffect(() => {
+    if (!lastPinDrag) return;
+    setLastPinDrag(null); // Consume
+
+    // Abort any in-flight reverse geocode
+    pinDragAbortRef.current?.abort();
+    const controller = new AbortController();
+    pinDragAbortRef.current = controller;
+
+    const { lat, lng, type } = lastPinDrag;
+    const target: 'from' | 'to' = type === 'origin' ? 'from' : 'to';
+    const tempLabel = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+
+    // Update preview pin immediately
+    setPreviewPin({ lat, lng, label: tempLabel, type });
+
+    // Reverse geocode
+    fetch(`/api/geocode?lat=${lat}&lng=${lng}`, { signal: controller.signal })
+      .then(res => res.ok ? res.json() : null)
+      .then((data: { address: string; lat: number; lng: number } | null) => {
+        if (!data) return;
+        handleSelectionChange(target, { type: 'address', lat: data.lat, lng: data.lng, address: data.address });
+      })
+      .catch((err) => {
+        if (err instanceof DOMException && err.name === 'AbortError') return;
+        handleSelectionChange(target, { type: 'address', lat, lng, address: tempLabel });
+      });
+  }, [lastPinDrag, setLastPinDrag, setPreviewPin, handleSelectionChange]);
 
   // Deep linking: parse URL params and auto-search
   useEffect(() => {
@@ -173,14 +277,62 @@ function ItineraireContent() {
     if (routes.length > 0) setFormCollapsed(true);
   }, [routes]);
 
-  // Push selected route to the map
+  // Push selected route to the map — skip when an alt mode (walking/cycling) is active
   useEffect(() => {
+    if (activeAltMode) return;
     if (selectedRoute) {
       setRouteOverlay(selectedRoute.route);
     } else {
       clearOverlay();
     }
-  }, [selectedRoute, setRouteOverlay, clearOverlay]);
+  }, [selectedRoute, setRouteOverlay, clearOverlay, activeAltMode]);
+
+  // Build a walking-only RouteResult from a DirectEstimate for map display
+  const buildDirectRoute = useCallback((estimate: DirectEstimate, mode: 'walking' | 'cycling'): RouteResult | null => {
+    const f = fromSelRef.current;
+    const t = toSelRef.current;
+    if (!f || !t || !estimate.path) return null;
+    const fromLat = f.type === 'address' ? f.lat : f.station.latitude;
+    const fromLng = f.type === 'address' ? f.lng : f.station.longitude;
+    const toLat = t.type === 'address' ? t.lat : t.station.latitude;
+    const toLng = t.type === 'address' ? t.lng : t.station.longitude;
+    const fromAddr = f.type === 'address' ? f.address.split(',').slice(0, 2).join(', ') : f.station.name;
+    const toAddr = t.type === 'address' ? t.address.split(',').slice(0, 2).join(', ') : t.station.name;
+
+    const walkingDirect: WalkingDirect = {
+      fromAddress: fromAddr, fromLat, fromLng,
+      toAddress: toAddr, toLat, toLng,
+      distanceMeters: estimate.distanceMeters,
+      durationSeconds: estimate.durationSeconds,
+      path: estimate.path,
+    };
+    return {
+      found: true,
+      walkingOnly: true,
+      walkingDirect,
+      totalDurationSeconds: estimate.durationSeconds,
+      totalStations: 0,
+      totalTransfers: 0,
+      segments: [],
+      transfers: [],
+    };
+  }, []);
+
+  const handleAltModeClick = useCallback((mode: 'walking' | 'cycling') => {
+    const estimate = mode === 'walking' ? walkingEstimate : cyclingEstimate;
+    if (!estimate) return;
+    if (activeAltMode === mode) {
+      // Deselect — go back to selected transit route
+      setActiveAltMode(null);
+      if (selectedRoute) setRouteOverlay(selectedRoute.route);
+      return;
+    }
+    const route = buildDirectRoute(estimate, mode);
+    if (route) {
+      setActiveAltMode(mode);
+      setRouteOverlay(route);
+    }
+  }, [walkingEstimate, cyclingEstimate, activeAltMode, selectedRoute, buildDirectRoute, setRouteOverlay]);
 
   // Clear overlay and preview pins on unmount
   useEffect(() => {
@@ -287,14 +439,14 @@ function ItineraireContent() {
           <div className="flex flex-col gap-1 mt-1">
             <button
               onClick={handleShare}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
               aria-label="Partager l'itinéraire"
             >
               {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
             </button>
             <button
               onClick={handleToggleFavorite}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
               aria-label={currentIsFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
             >
               <Star className={`w-4 h-4 ${currentIsFav ? 'fill-amber-400 text-amber-400' : ''}`} />
@@ -318,10 +470,13 @@ function ItineraireContent() {
                 Favoris
               </h2>
               {favorites.map(fav => (
-                <button
+                <div
                   key={fav.id}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => handleFavoriteClick(fav)}
-                  className="group w-full text-left rounded-lg border border-border bg-card px-3 py-2.5 transition-colors hover:border-foreground/20"
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleFavoriteClick(fav); } }}
+                  className="group w-full text-left rounded-lg border border-border bg-card px-3 py-2.5 transition-colors hover:border-foreground/20 cursor-pointer"
                 >
                   <div className="flex items-center gap-2">
                     <div className="flex-1 min-w-0">
@@ -336,13 +491,13 @@ function ItineraireContent() {
                     </div>
                     <button
                       onClick={(e) => { e.stopPropagation(); removeFavorite(fav.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-foreground transition-opacity"
+                      className="sm:opacity-0 sm:group-hover:opacity-100 focus-visible:opacity-100 p-1 text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 transition-opacity"
                       aria-label="Supprimer le favori"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           )}
@@ -357,19 +512,70 @@ function ItineraireContent() {
         </>
       )}
 
-      {routes.length > 1 && (
+      {!navigation.active && routes.length > 0 && (walkingEstimate || cyclingEstimate) && (
         <div className="animate-in fade-in duration-200">
-          <RouteOptions
-            routes={routes}
-            selectedIndex={selectedIndex}
-            onSelect={selectRoute}
-            disruptions={disruptions}
+          <AlternativeModes
+            walking={walkingEstimate}
+            cycling={cyclingEstimate}
+            activeMode={activeAltMode}
+            onClickWalking={() => handleAltModeClick('walking')}
+            onClickCycling={() => handleAltModeClick('cycling')}
           />
         </div>
       )}
 
-      {selectedRoute && (
+      {!navigation.active && routes.length > 1 && (
         <div className="animate-in fade-in duration-200">
+          <RouteOptions
+            routes={routes}
+            selectedIndex={selectedIndex}
+            onSelect={(idx) => { setActiveAltMode(null); selectRoute(idx); }}
+            disruptions={disruptions}
+            strategy={strategy}
+            onChangeStrategy={changeStrategy}
+            loading={routeLoading}
+          />
+        </div>
+      )}
+
+      {/* DEV: Route position simulator panel */}
+      {process.env.NODE_ENV === 'development' && (
+        <DevSimulatorPanel simulator={simulator} />
+      )}
+
+      {/* Navigation mode: replaces route result when active */}
+      {navigation.active ? (
+        <div className="animate-in fade-in duration-200">
+          <NavigationView navigation={navigation} />
+        </div>
+      ) : selectedRoute && (
+        <div className="animate-in fade-in duration-200">
+          {/* Start navigation button */}
+          <div className="flex gap-2 mb-3">
+            <button
+              onClick={handleStartNavigation}
+              className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-medium py-2.5 px-4 transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+            >
+              <Locate className="w-4 h-4" />
+              Lancer la navigation
+            </button>
+            {process.env.NODE_ENV === 'development' && (
+              <button
+                onClick={() => {
+                  if (!selectedRoute) return;
+                  // Inject synthetic departures so navigation UI shows trains
+                  const enriched = injectSyntheticDepartures(selectedRoute.route);
+                  navigation.startNavigation(enriched);
+                  simulator.start(enriched);
+                }}
+                className="flex items-center justify-center gap-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-medium py-2.5 px-3 transition-colors text-sm"
+                title="Simuler le deplacement (dev)"
+              >
+                <Radar className="w-4 h-4" />
+                Sim
+              </button>
+            )}
+          </div>
           <RouteResultView route={selectedRoute.route} disruptions={disruptions} />
         </div>
       )}

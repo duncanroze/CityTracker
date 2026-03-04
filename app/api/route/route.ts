@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { findRoutes } from '@/lib/server/pathfinder';
+import { findRoutes, type RouteStrategy } from '@/lib/server/pathfinder';
 import { enrichRouteWithDepartures } from '@/lib/server/departures';
 import { findNearestStation } from '@/lib/server/geo';
-import type { WalkingLeg, RouteResult } from '@/types';
+import { getWalkingDirections, getCyclingDirections } from '@/lib/server/walking';
+import { prisma } from '@/lib/server/prisma';
+import type { WalkingLeg, WalkingDirect, RouteResult, DirectEstimate } from '@/types';
 
 const querySchema = z
   .object({
@@ -109,13 +111,47 @@ export async function GET(request: NextRequest) {
     }
 
     if (fromStationId === toStationId) {
-      return NextResponse.json(
-        { error: 'Origin and destination must be different' },
-        { status: 400 },
-      );
+      // Build a walking-only route between the two points via OSRM
+      const fromLat = data.fromLat ?? walkingFrom?.stationLat ?? 0;
+      const fromLng = data.fromLng ?? walkingFrom?.stationLng ?? 0;
+      const toLat = data.toLat ?? walkingTo?.stationLat ?? 0;
+      const toLng = data.toLng ?? walkingTo?.stationLng ?? 0;
+      const fromAddr = data.fromAddress ?? walkingFrom?.stationName ?? 'Départ';
+      const toAddr = data.toAddress ?? walkingTo?.stationName ?? 'Arrivée';
+
+      const directions = await getWalkingDirections(fromLat, fromLng, toLat, toLng);
+
+      const walkingDirect: WalkingDirect = {
+        fromAddress: fromAddr,
+        fromLat,
+        fromLng,
+        toAddress: toAddr,
+        toLat,
+        toLng,
+        distanceMeters: directions.distanceMeters,
+        durationSeconds: directions.durationSeconds,
+        path: directions.path,
+      };
+
+      const walkingRoute: RouteResult = {
+        found: true,
+        walkingOnly: true,
+        walkingDirect,
+        totalDurationSeconds: directions.durationSeconds,
+        totalStations: 0,
+        totalTransfers: 0,
+        segments: [],
+        transfers: [],
+      };
+
+      return NextResponse.json({
+        found: true,
+        routes: [{ label: 'Walking', route: walkingRoute }],
+      });
     }
 
-    const result = await findRoutes(fromStationId, toStationId);
+    const strategy = (searchParams.get('strategy') as RouteStrategy) || 'fastest';
+    const result = await findRoutes(fromStationId, toStationId, strategy);
 
     // Enrich routes with real-time departures + walking legs
     const enrichedRoutes = await Promise.all(
@@ -128,27 +164,91 @@ export async function GET(request: NextRequest) {
           route = labeled.route;
         }
 
-        // Attach walking legs and adjust total duration
+        // Attach walking legs with OSRM street-level paths
         if (walkingFrom) {
-          route = { ...route, walkingFrom };
-          route.totalDurationSeconds += walkingFrom.durationSeconds;
+          const wfDir = await getWalkingDirections(
+            walkingFrom.lat, walkingFrom.lng,
+            walkingFrom.stationLat, walkingFrom.stationLng,
+          );
+          const enrichedWalkFrom = {
+            ...walkingFrom,
+            path: wfDir.path,
+            distanceMeters: wfDir.distanceMeters,
+            durationSeconds: wfDir.durationSeconds,
+          };
+          route = { ...route, walkingFrom: enrichedWalkFrom };
+          route.totalDurationSeconds += enrichedWalkFrom.durationSeconds;
         }
         if (walkingTo) {
-          route = { ...route, walkingTo };
-          route.totalDurationSeconds += walkingTo.durationSeconds;
+          const wtDir = await getWalkingDirections(
+            walkingTo.stationLat, walkingTo.stationLng,
+            walkingTo.lat, walkingTo.lng,
+          );
+          const enrichedWalkTo = {
+            ...walkingTo,
+            path: wtDir.path,
+            distanceMeters: wtDir.distanceMeters,
+            durationSeconds: wtDir.durationSeconds,
+          };
+          route = { ...route, walkingTo: enrichedWalkTo };
+          route.totalDurationSeconds += enrichedWalkTo.durationSeconds;
         }
 
         return { ...labeled, route };
       }),
     );
 
-    // Re-sort by enriched duration and re-label
-    enrichedRoutes.sort((a, b) => a.route.totalDurationSeconds - b.route.totalDurationSeconds);
+    // Re-sort based on strategy after enrichment
+    const totalWalk = (r: RouteResult) =>
+      (r.walkingFrom?.durationSeconds ?? 0) + (r.walkingTo?.durationSeconds ?? 0)
+      + r.transfers.reduce((sum, t) => sum + t.walkingTimeSeconds, 0);
+
+    if (strategy === 'fewest_transfers') {
+      enrichedRoutes.sort((a, b) =>
+        a.route.totalTransfers - b.route.totalTransfers || a.route.totalDurationSeconds - b.route.totalDurationSeconds,
+      );
+    } else if (strategy === 'least_walking') {
+      enrichedRoutes.sort((a, b) =>
+        totalWalk(a.route) - totalWalk(b.route) || a.route.totalDurationSeconds - b.route.totalDurationSeconds,
+      );
+    } else {
+      enrichedRoutes.sort((a, b) => a.route.totalDurationSeconds - b.route.totalDurationSeconds);
+    }
     enrichedRoutes.forEach((r, i) => {
       r.label = i === 0 ? 'Fastest' : `Option ${i + 1}`;
     });
 
-    return NextResponse.json({ ...result, routes: enrichedRoutes });
+    // Compute direct walking & cycling estimates (skip on strategy-change requests)
+    let walkingEstimate: DirectEstimate | undefined;
+    let cyclingEstimate: DirectEstimate | undefined;
+    const skipEstimates = searchParams.get('skipEstimates') === '1';
+
+    if (!skipEstimates) {
+      let originLat = data.fromLat;
+      let originLng = data.fromLng;
+      let destLat = data.toLat;
+      let destLng = data.toLng;
+
+      if (originLat == null && data.from) {
+        const s = await prisma.station.findUnique({ where: { id: data.from }, select: { latitude: true, longitude: true } });
+        if (s) { originLat = s.latitude; originLng = s.longitude; }
+      }
+      if (destLat == null && data.to) {
+        const s = await prisma.station.findUnique({ where: { id: data.to }, select: { latitude: true, longitude: true } });
+        if (s) { destLat = s.latitude; destLng = s.longitude; }
+      }
+
+      if (originLat != null && originLng != null && destLat != null && destLng != null) {
+        const [walkDir, bikeDir] = await Promise.all([
+          getWalkingDirections(originLat, originLng, destLat, destLng),
+          getCyclingDirections(originLat, originLng, destLat, destLng),
+        ]);
+        walkingEstimate = { durationSeconds: walkDir.durationSeconds, distanceMeters: walkDir.distanceMeters, path: walkDir.path };
+        cyclingEstimate = { durationSeconds: bikeDir.durationSeconds, distanceMeters: bikeDir.distanceMeters, path: bikeDir.path };
+      }
+    }
+
+    return NextResponse.json({ ...result, routes: enrichedRoutes, walkingEstimate, cyclingEstimate });
   } catch (err) {
     console.error('Error finding route:', err);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

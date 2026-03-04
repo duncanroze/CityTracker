@@ -81,10 +81,15 @@ export async function enrichRouteWithDepartures(route: RouteResult): Promise<Rou
       ? departureTimes.filter((d) => d > arrivalTime)
       : [];
 
+    // Resolve lineStopId for navigation departure re-fetch
+    const firstStop = segment.stops[0];
+    const lineStopEntry = firstStop ? lineStopIndex.get(`${firstStop.stationId}:${segment.lineCode}`) : null;
+    const firstStopLineStopId = lineStopEntry?.id;
+
     if (futureDepartures.length === 0) {
       // No real-time departure available for our arrival time — use headway estimate
       const waitTimeSeconds = getBoardingPenalty(segment.lineCode, segment.transportType);
-      enrichedSegments.push({ ...segment, waitTimeSeconds });
+      enrichedSegments.push({ ...segment, waitTimeSeconds, firstStopLineStopId });
       arrivalTime = new Date(
         arrivalTime.getTime() + (waitTimeSeconds + segment.durationSeconds) * 1000,
       );
@@ -108,6 +113,7 @@ export async function enrichRouteWithDepartures(route: RouteResult): Promise<Rou
       ...segment,
       nextDepartures,
       waitTimeSeconds,
+      firstStopLineStopId,
     });
 
     // Advance: wait + travel on this segment

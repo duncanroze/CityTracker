@@ -81,7 +81,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Forward geocoding: ?q=...
+    // Forward geocoding via BAN (Base Adresse Nationale): ?q=...
     const parsed = querySchema.safeParse({ q: searchParams.get('q') });
 
     if (!parsed.success) {
@@ -93,54 +93,68 @@ export async function GET(request: NextRequest) {
 
     const { q } = parsed.data;
 
-    const url = new URL('https://nominatim.openstreetmap.org/search');
-    url.searchParams.set('q', q);
-    url.searchParams.set('format', 'json');
-    url.searchParams.set('limit', '5');
-    url.searchParams.set('viewbox', '2.1,48.95,2.6,48.75');
-    url.searchParams.set('bounded', '0');
-    url.searchParams.set('countrycodes', 'fr');
-    url.searchParams.set('dedupe', '1');
-    url.searchParams.set('addressdetails', '1');
-
-    const res = await fetch(url.toString(), {
-      headers: {
-        'User-Agent': 'CityTracker/1.0 (paris transport app)',
-        'Accept-Language': 'fr',
-      },
-      next: { revalidate: 300 },
-    });
-
-    if (!res.ok) {
-      return NextResponse.json(
-        { error: 'Geocoding service unavailable' },
-        { status: 502 },
-      );
+    interface BANFeature {
+      geometry: { coordinates: [number, number] };
+      properties: { label: string; score: number; postcode?: string };
     }
 
-    const data: NominatimResult[] = await res.json();
+    // Two parallel requests: Paris-specific + general with proximity bias
+    const parisUrl = new URL('https://api-adresse.data.gouv.fr/search/');
+    parisUrl.searchParams.set('q', q);
+    parisUrl.searchParams.set('limit', '5');
+    parisUrl.searchParams.set('citycode', '75056');
 
-    const results = data.map((r) => {
-      // Build a concise address from structured fields when available
-      const a = r.address;
-      let address = r.display_name;
-      if (a?.road) {
-        const parts: string[] = [];
-        if (a.house_number) parts.push(a.house_number);
-        parts.push(a.road);
-        if (a.postcode || a.city) {
-          parts.push([a.postcode, a.city].filter(Boolean).join(' '));
-        }
-        address = parts.join(', ');
-      }
-      return {
-        address,
-        lat: parseFloat(r.lat),
-        lng: parseFloat(r.lon),
-      };
-    });
+    const generalUrl = new URL('https://api-adresse.data.gouv.fr/search/');
+    generalUrl.searchParams.set('q', q);
+    generalUrl.searchParams.set('limit', '20');
+    generalUrl.searchParams.set('lat', '48.8566');
+    generalUrl.searchParams.set('lon', '2.3522');
 
-    return NextResponse.json(results, {
+    const [parisRes, generalRes] = await Promise.all([
+      fetch(parisUrl.toString(), { next: { revalidate: 300 } }),
+      fetch(generalUrl.toString(), { next: { revalidate: 300 } }),
+    ]);
+
+    const IDF_DEPTS = new Set(['75', '77', '78', '91', '92', '93', '94', '95']);
+
+    const parisData: { features: BANFeature[] } = parisRes.ok
+      ? await parisRes.json()
+      : { features: [] };
+    const generalData: { features: BANFeature[] } = generalRes.ok
+      ? await generalRes.json()
+      : { features: [] };
+
+    // Merge: Paris results first, then IDF from general (dedupe), then rest
+    const seen = new Set<string>();
+    const merged: { address: string; lat: number; lng: number }[] = [];
+
+    function addFeature(f: BANFeature) {
+      const key = `${f.geometry.coordinates[1].toFixed(5)},${f.geometry.coordinates[0].toFixed(5)}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      merged.push({
+        address: f.properties.label,
+        lat: f.geometry.coordinates[1],
+        lng: f.geometry.coordinates[0],
+      });
+    }
+
+    // 1. Paris results
+    for (const f of parisData.features) addFeature(f);
+
+    // 2. IDF results from general query
+    for (const f of generalData.features) {
+      const dept = (f.properties.postcode ?? '').slice(0, 2);
+      if (IDF_DEPTS.has(dept)) addFeature(f);
+    }
+
+    // 3. Non-IDF results as fallback
+    for (const f of generalData.features) {
+      const dept = (f.properties.postcode ?? '').slice(0, 2);
+      if (!IDF_DEPTS.has(dept)) addFeature(f);
+    }
+
+    return NextResponse.json(merged.slice(0, 5), {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
       },

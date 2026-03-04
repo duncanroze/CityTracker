@@ -7,12 +7,18 @@ interface AgentCardProps {
   status: AgentStatus;
   score?: number;
   logCount?: number;
+  tokens?: number;
   onClick?: () => void;
 }
 
-export default function AgentCard({ agent, status, score = 0, logCount, onClick }: AgentCardProps) {
+export default function AgentCard({ agent, status, score = 0, logCount, tokens, onClick }: AgentCardProps) {
   const cfg = STATUS_CONFIG[status];
   const Icon = agent.icon;
+
+  const formatTokens = (t: number) => {
+    if (t >= 1000) return `${(t / 1000).toFixed(1)}k`;
+    return String(t);
+  };
 
   return (
     <div
@@ -73,11 +79,18 @@ export default function AgentCard({ agent, status, score = 0, logCount, onClick 
               {score}
             </span>
           )}
-          {logCount !== undefined && logCount > 0 && (
-            <span className="ml-auto text-[10px] tabular-nums text-muted-foreground">
-              {logCount} msg
-            </span>
-          )}
+          <div className="ml-auto flex items-center gap-1.5">
+            {tokens !== undefined && tokens > 0 && (
+              <span className="text-[10px] tabular-nums text-amber-400">
+                {formatTokens(tokens)} tok
+              </span>
+            )}
+            {logCount !== undefined && logCount > 0 && (
+              <span className="text-[10px] tabular-nums text-muted-foreground">
+                {logCount} msg
+              </span>
+            )}
+          </div>
         </div>
       </div>
     </div>

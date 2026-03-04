@@ -27,12 +27,13 @@ function normalize(str: string): string {
 }
 
 function shortAddress(address: string): string {
+  // BAN format: "20b Rue Balard 75015 Paris" → "20b Rue Balard"
+  const banMatch = address.match(/^(.+?)\s+\d{5}\s/);
+  if (banMatch) return banMatch[1];
+  // Nominatim format: "55, Boulevard Voltaire, 75011 Paris" → "55, Boulevard Voltaire"
   const parts = address.split(',');
-  // Nominatim format: "12, Rue de Rivoli, Paris, ..." or "20 bis, Rue Balard, ..."
-  if (parts.length >= 2 && /^\d+/.test(parts[0].trim())) {
-    return `${parts[0].trim()} ${parts[1].trim()}`;
-  }
-  return parts[0].trim();
+  if (parts.length >= 2) return parts.slice(0, 2).join(',').trim();
+  return address;
 }
 
 export default function StationPicker({ label, stations, selected, onSelect }: StationPickerProps) {

@@ -47,6 +47,9 @@ export interface AgentOutput {
   content: string;
   durationMs: number;
   completedAt: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  totalTokens?: number;
 }
 
 export interface StreamChunk {

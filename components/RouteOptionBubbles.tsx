@@ -94,6 +94,11 @@ export default memo(function RouteOptionBubbles({
 }: RouteOptionBubblesProps) {
   const { label, route } = labeledRoute;
 
+  // Total walking time: legs to/from stations + transfer walks
+  const totalWalkingSecs = (route.walkingFrom?.durationSeconds ?? 0)
+    + (route.walkingTo?.durationSeconds ?? 0)
+    + route.transfers.reduce((sum, t) => sum + t.walkingTimeSeconds, 0);
+
   return (
     <button
       onClick={onClick}
@@ -114,7 +119,7 @@ export default memo(function RouteOptionBubbles({
               : 'bg-muted text-muted-foreground'
           )}
         >
-          {label === 'Fastest' ? 'Le plus rapide' : `Option ${label.replace('Option ', '')}`}
+          {label === 'Fastest' ? 'Le plus rapide' : label === 'Walking' ? 'À pied' : `Option ${label.replace('Option ', '')}`}
         </span>
         <div className="text-right">
           <span className="text-sm font-semibold">
@@ -128,45 +133,72 @@ export default memo(function RouteOptionBubbles({
 
       {/* Circle chain */}
       <div className="flex items-center justify-center">
-        {route.walkingFrom && (
+        {route.walkingOnly ? (
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Footprints className="w-5 h-5" />
+            <span className="text-sm font-medium">À pied</span>
+          </div>
+        ) : (
           <>
-            <Footprints className="w-4 h-4 text-muted-foreground" />
-            <div className="w-2 h-0.5 bg-border rounded-full mx-0.5" />
-          </>
-        )}
-        {route.segments.map((seg, i) => (
-          <Fragment key={`${seg.lineCode}-${i}`}>
-            {i > 0 && <TransferConnector />}
-            <LineCircle
-              code={seg.lineCode}
-              color={seg.lineColor}
-              textColor={seg.lineTextColor}
-              transportType={seg.transportType}
-              disruption={disruptions?.[seg.lineCode]?.severity}
-            />
-          </Fragment>
-        ))}
-        {route.walkingTo && (
-          <>
-            <div className="w-2 h-0.5 bg-border rounded-full mx-0.5" />
-            <Footprints className="w-4 h-4 text-muted-foreground" />
+            {route.walkingFrom && (
+              <>
+                <Footprints className="w-4 h-4 text-muted-foreground" />
+                <div className="w-2 h-0.5 bg-border rounded-full mx-0.5" />
+              </>
+            )}
+            {route.segments.map((seg, i) => (
+              <Fragment key={`${seg.lineCode}-${i}`}>
+                {i > 0 && <TransferConnector />}
+                <LineCircle
+                  code={seg.lineCode}
+                  color={seg.lineColor}
+                  textColor={seg.lineTextColor}
+                  transportType={seg.transportType}
+                  disruption={disruptions?.[seg.lineCode]?.severity}
+                />
+              </Fragment>
+            ))}
+            {route.walkingTo && (
+              <>
+                <div className="w-2 h-0.5 bg-border rounded-full mx-0.5" />
+                <Footprints className="w-4 h-4 text-muted-foreground" />
+              </>
+            )}
           </>
         )}
       </div>
 
       {/* Info row: station counts + transfers */}
       <div className="flex items-center justify-between mt-2.5">
-        <div className="flex items-center gap-3">
-          {route.segments.map((seg, i) => (
-            <span key={`count-${i}`} className="text-[11px] text-muted-foreground">
-              {seg.stops.length} arr.
-            </span>
-          ))}
-        </div>
-        {route.totalTransfers > 0 && (
+        {route.walkingOnly && route.walkingDirect ? (
           <span className="text-[11px] text-muted-foreground">
-            {route.totalTransfers} corresp.
+            {route.walkingDirect.distanceMeters >= 1000
+              ? `${(route.walkingDirect.distanceMeters / 1000).toFixed(1)} km`
+              : `${route.walkingDirect.distanceMeters} m`}
           </span>
+        ) : (
+          <>
+            <div className="flex items-center gap-3">
+              {route.segments.map((seg, i) => (
+                <span key={`count-${i}`} className="text-[11px] text-muted-foreground">
+                  {seg.stops.length} arr.
+                </span>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              {totalWalkingSecs > 0 && (
+                <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
+                  <Footprints className="w-3 h-3" />
+                  {Math.round(totalWalkingSecs / 60)} min
+                </span>
+              )}
+              {route.totalTransfers > 0 && (
+                <span className="text-[11px] text-muted-foreground">
+                  {route.totalTransfers} corresp.
+                </span>
+              )}
+            </div>
+          </>
         )}
       </div>
     </button>

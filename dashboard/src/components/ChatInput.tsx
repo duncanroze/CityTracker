@@ -1,39 +1,8 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, Check, X, Pencil } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { MarkdownRenderer } from './MarkdownRenderer';
 import type { ConnectionStatus } from '../hooks/usePipelineSocket';
-
-/** Lightweight markdown → HTML for plan display (headers, bold, code, lists) */
-function renderMarkdown(md: string): string {
-  return md
-    .split('\n')
-    .map(line => {
-      // Code blocks (```) → handled below as multiline
-      if (line.startsWith('```')) return line;
-      // Headers
-      if (line.startsWith('### ')) return `<h4 class="mt-3 mb-1 text-[13px] font-bold text-foreground">${line.slice(4)}</h4>`;
-      if (line.startsWith('## ')) return `<h3 class="mt-4 mb-1 text-[14px] font-bold text-foreground">${line.slice(3)}</h3>`;
-      if (line.startsWith('# ')) return `<h2 class="mt-4 mb-1.5 text-[15px] font-bold text-foreground">${line.slice(2)}</h2>`;
-      // Bullet lists
-      if (/^[-*] /.test(line)) return `<li class="ml-4 list-disc">${inlineFormat(line.slice(2))}</li>`;
-      // Numbered lists
-      if (/^\d+\. /.test(line)) return `<li class="ml-4 list-decimal">${inlineFormat(line.replace(/^\d+\.\s/, ''))}</li>`;
-      // Empty lines
-      if (line.trim() === '') return '<br/>';
-      // Regular paragraph
-      return `<p>${inlineFormat(line)}</p>`;
-    })
-    .join('\n')
-    // Handle code blocks
-    .replace(/```[\w]*\n([\s\S]*?)```/g, '<pre class="my-2 rounded bg-black/20 p-2 text-[11px] overflow-x-auto">$1</pre>');
-}
-
-function inlineFormat(text: string): string {
-  return text
-    .replace(/`([^`]+)`/g, '<code class="rounded bg-black/20 px-1 py-0.5 text-[11px]">$1</code>')
-    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*([^*]+)\*/g, '<em>$1</em>');
-}
 
 interface ChatInputProps {
   status: string;
@@ -48,12 +17,12 @@ interface ChatInputProps {
 }
 
 function PlanMarkdown({ content }: { content: string }) {
-  const html = useMemo(() => renderMarkdown(content), [content]);
   return (
-    <div
-      className="mb-3 max-h-[400px] overflow-y-auto rounded-lg border border-border bg-card p-3 text-[12px] leading-relaxed text-foreground/90"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <div className="mb-3 max-h-[400px] overflow-y-auto rounded-lg border border-border bg-card p-3">
+      <MarkdownRenderer className="text-[12px] leading-relaxed">
+        {content}
+      </MarkdownRenderer>
+    </div>
   );
 }
 

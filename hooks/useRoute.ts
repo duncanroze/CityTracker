@@ -1,7 +1,9 @@
 import { useState, useCallback, useRef } from 'react';
-import type { LabeledRoute, MultiRouteResult, PickerSelection } from '@/types';
+import type { LabeledRoute, MultiRouteResult, PickerSelection, DirectEstimate } from '@/types';
 
-function buildSearchParams(from: PickerSelection, to: PickerSelection): URLSearchParams {
+export type SortStrategy = 'fastest' | 'fewest_transfers' | 'least_walking';
+
+function buildSearchParams(from: PickerSelection, to: PickerSelection, strategy?: SortStrategy): URLSearchParams {
   const params = new URLSearchParams();
 
   if (from.type === 'station') {
@@ -20,6 +22,10 @@ function buildSearchParams(from: PickerSelection, to: PickerSelection): URLSearc
     params.set('toAddress', to.address);
   }
 
+  if (strategy && strategy !== 'fastest') {
+    params.set('strategy', strategy);
+  }
+
   return params;
 }
 
@@ -28,20 +34,34 @@ export function useRoute() {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [walkingEstimate, setWalkingEstimate] = useState<DirectEstimate | null>(null);
+  const [cyclingEstimate, setCyclingEstimate] = useState<DirectEstimate | null>(null);
+  const [strategy, setStrategy] = useState<SortStrategy>('fastest');
   const controllerRef = useRef<AbortController | null>(null);
+  // Remember last search params to allow re-searching with different strategy
+  const lastSearchRef = useRef<{ from: PickerSelection; to: PickerSelection } | null>(null);
 
-  const search = useCallback(async (from: PickerSelection, to: PickerSelection) => {
+  const search = useCallback(async (from: PickerSelection, to: PickerSelection, strat: SortStrategy = 'fastest', isStrategyChange = false) => {
     controllerRef.current?.abort();
     const controller = new AbortController();
     controllerRef.current = controller;
 
+    lastSearchRef.current = { from, to };
     setLoading(true);
     setError(null);
-    setRoutes([]);
+    // Don't clear routes on strategy change — keeps the UI stable while loading
+    if (!isStrategyChange) {
+      setRoutes([]);
+      setWalkingEstimate(null);
+      setCyclingEstimate(null);
+    }
     setSelectedIndex(0);
+    setStrategy(strat);
 
     try {
-      const params = buildSearchParams(from, to);
+      const params = buildSearchParams(from, to, strat);
+      // Skip walking/cycling estimates on strategy changes — they don't depend on strategy
+      if (isStrategyChange) params.set('skipEstimates', '1');
       const res = await fetch(
         `/api/route?${params.toString()}`,
         { signal: controller.signal },
@@ -55,6 +75,8 @@ export function useRoute() {
         setError('No route found between these stations');
       } else {
         setRoutes(data.routes);
+        if (data.walkingEstimate) setWalkingEstimate(data.walkingEstimate);
+        if (data.cyclingEstimate) setCyclingEstimate(data.cyclingEstimate);
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
@@ -64,6 +86,12 @@ export function useRoute() {
     }
   }, []);
 
+  /** Re-search with a different strategy using the last origin/destination */
+  const changeStrategy = useCallback((newStrategy: SortStrategy) => {
+    if (!lastSearchRef.current) return;
+    search(lastSearchRef.current.from, lastSearchRef.current.to, newStrategy, true);
+  }, [search]);
+
   const selectRoute = useCallback((index: number) => {
     setSelectedIndex(index);
   }, []);
@@ -72,9 +100,13 @@ export function useRoute() {
     setRoutes([]);
     setSelectedIndex(0);
     setError(null);
+    setWalkingEstimate(null);
+    setCyclingEstimate(null);
+    setStrategy('fastest');
+    lastSearchRef.current = null;
   }, []);
 
   const selectedRoute = routes.length > 0 ? routes[selectedIndex] : null;
 
-  return { routes, selectedRoute, selectedIndex, selectRoute, loading, error, search, clear };
+  return { routes, selectedRoute, selectedIndex, selectRoute, loading, error, search, clear, walkingEstimate, cyclingEstimate, strategy, changeStrategy };
 }

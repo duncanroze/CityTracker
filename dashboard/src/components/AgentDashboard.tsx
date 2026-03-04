@@ -120,6 +120,7 @@ export default function AgentDashboard() {
             logCount={scenario.logs.length}
             iterations={scenario.iterations}
             feedbackCount={scenario.feedback?.length ?? 0}
+            outputs={scenario.outputs}
           />
         </div>
       )}
@@ -155,6 +156,7 @@ export default function AgentDashboard() {
           scores={scenario.scores}
           logs={scenario.logs}
           feedback={scenario.feedback}
+          outputs={scenario.outputs}
           onAgentClick={setSelectedAgent}
         />
       </div>
@@ -242,6 +244,7 @@ export default function AgentDashboard() {
           score={scenario.scores[selectedAgent]}
           logs={scenario.logs}
           feedback={scenario.feedback ?? []}
+          output={scenario.outputs[selectedAgent]}
           streamBuffer={mode === 'live' ? streamBuffers[selectedAgent] : undefined}
           onClose={() => setSelectedAgent(null)}
         />

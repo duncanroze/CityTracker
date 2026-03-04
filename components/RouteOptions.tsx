@@ -1,46 +1,29 @@
 'use client';
 
-import { useState, useMemo } from 'react';
 import { Clock, ArrowLeftRight, Footprints } from 'lucide-react';
 import type { LabeledRoute } from '@/types';
+import type { SortStrategy } from '@/hooks/useRoute';
 import type { DisruptionsMap } from '@/hooks/useDisruptions';
 import RouteOptionBubbles from './RouteOptionBubbles';
 import { cn } from '@/lib/utils';
 
-type SortKey = 'fastest' | 'transfers' | 'walking';
-
-const SORT_OPTIONS: { key: SortKey; label: string; icon: typeof Clock }[] = [
+const SORT_OPTIONS: { key: SortStrategy; label: string; icon: typeof Clock }[] = [
   { key: 'fastest', label: 'Rapide', icon: Clock },
-  { key: 'transfers', label: 'Corresp.', icon: ArrowLeftRight },
-  { key: 'walking', label: 'Marche', icon: Footprints },
+  { key: 'fewest_transfers', label: 'Corresp.', icon: ArrowLeftRight },
+  { key: 'least_walking', label: 'Marche', icon: Footprints },
 ];
-
-function getWalkingTime(lr: LabeledRoute): number {
-  return (lr.route.walkingFrom?.durationSeconds ?? 0) + (lr.route.walkingTo?.durationSeconds ?? 0);
-}
 
 interface RouteOptionsProps {
   routes: LabeledRoute[];
   selectedIndex: number;
   onSelect: (index: number) => void;
   disruptions?: DisruptionsMap;
+  strategy: SortStrategy;
+  onChangeStrategy: (strategy: SortStrategy) => void;
+  loading?: boolean;
 }
 
-export default function RouteOptions({ routes, selectedIndex, onSelect, disruptions }: RouteOptionsProps) {
-  const [sortKey, setSortKey] = useState<SortKey>('fastest');
-
-  const sortedIndices = useMemo(() => {
-    const indices = routes.map((_, i) => i);
-    if (sortKey === 'fastest') {
-      indices.sort((a, b) => routes[a].route.totalDurationSeconds - routes[b].route.totalDurationSeconds);
-    } else if (sortKey === 'transfers') {
-      indices.sort((a, b) => routes[a].route.totalTransfers - routes[b].route.totalTransfers || routes[a].route.totalDurationSeconds - routes[b].route.totalDurationSeconds);
-    } else if (sortKey === 'walking') {
-      indices.sort((a, b) => getWalkingTime(routes[a]) - getWalkingTime(routes[b]) || routes[a].route.totalDurationSeconds - routes[b].route.totalDurationSeconds);
-    }
-    return indices;
-  }, [routes, sortKey]);
-
+export default function RouteOptions({ routes, selectedIndex, onSelect, disruptions, strategy, onChangeStrategy, loading }: RouteOptionsProps) {
   if (routes.length <= 1) return null;
 
   return (
@@ -53,12 +36,14 @@ export default function RouteOptions({ routes, selectedIndex, onSelect, disrupti
             return (
               <button
                 key={opt.key}
-                onClick={() => setSortKey(opt.key)}
+                onClick={() => onChangeStrategy(opt.key)}
+                disabled={loading}
                 className={cn(
-                  'flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors',
-                  sortKey === opt.key
+                  'flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-1',
+                  strategy === opt.key
                     ? 'bg-foreground/10 text-foreground'
                     : 'text-muted-foreground hover:text-foreground',
+                  loading && 'opacity-50 cursor-wait',
                 )}
               >
                 <Icon className="w-3 h-3" />
@@ -68,17 +53,23 @@ export default function RouteOptions({ routes, selectedIndex, onSelect, disrupti
           })}
         </div>
       </div>
-      <div className="grid gap-2">
-        {sortedIndices.map((originalIdx, displayIdx) => (
+      <div className={cn('grid gap-2 transition-opacity duration-200', loading && 'opacity-40 pointer-events-none')}>
+        {loading && (
+          <div className="flex items-center justify-center gap-2 py-1 text-xs text-muted-foreground">
+            <span className="w-3 h-3 border-2 border-muted-foreground/30 border-t-muted-foreground rounded-full animate-spin" />
+            Mise à jour...
+          </div>
+        )}
+        {routes.map((route, idx) => (
           <div
-            key={routes[originalIdx].route.segments.map(s => s.lineCode).join('-')}
+            key={`${strategy}-${idx}`}
             className="animate-in fade-in slide-in-from-bottom-1 fill-mode-both"
-            style={{ animationDelay: `${displayIdx * 60}ms`, animationDuration: '250ms' }}
+            style={{ animationDelay: `${idx * 60}ms`, animationDuration: '250ms' }}
           >
             <RouteOptionBubbles
-              labeledRoute={routes[originalIdx]}
-              selected={originalIdx === selectedIndex}
-              onClick={() => onSelect(originalIdx)}
+              labeledRoute={route}
+              selected={idx === selectedIndex}
+              onClick={() => onSelect(idx)}
               disruptions={disruptions}
             />
           </div>
