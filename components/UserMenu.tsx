@@ -13,16 +13,23 @@ export default function UserMenu() {
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on outside click
+  // Close dropdown on outside click or Escape
   useEffect(() => {
     if (!showDropdown) return;
-    const handler = (e: MouseEvent) => {
+    const handleClick = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setShowDropdown(false);
       }
     };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
   }, [showDropdown]);
 
   if (loading) {
@@ -34,13 +41,13 @@ export default function UserMenu() {
       <>
         <button
           onClick={() => { setModalTab('signup'); setShowModal(true); }}
-          className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20"
+          className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
         >
           Inscription
         </button>
         <button
           onClick={() => { setModalTab('login'); setShowModal(true); }}
-          className="rounded-lg bg-foreground text-background px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-90"
+          className="rounded-lg bg-foreground text-background px-3 py-1.5 text-xs font-medium transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
         >
           Connexion
         </button>
@@ -56,7 +63,7 @@ export default function UserMenu() {
       <button
         onClick={() => setShowDropdown(prev => !prev)}
         className={cn(
-          'flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors',
+          'flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
           'bg-foreground/10 text-foreground hover:bg-foreground/20',
         )}
         aria-label="Menu utilisateur"
@@ -78,7 +85,7 @@ export default function UserMenu() {
                 setShowDropdown(false);
                 await logout();
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-muted/50 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
             >
               <LogOut className="w-3.5 h-3.5" />
               Se déconnecter

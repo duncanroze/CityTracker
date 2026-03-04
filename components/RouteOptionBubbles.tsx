@@ -132,7 +132,7 @@ export default memo(function RouteOptionBubbles({
       </div>
 
       {/* Circle chain */}
-      <div className="flex items-center justify-center">
+      <div className="flex items-center justify-center flex-wrap gap-y-1">
         {route.walkingOnly ? (
           <div className="flex items-center gap-2 text-muted-foreground">
             <Footprints className="w-5 h-5" />

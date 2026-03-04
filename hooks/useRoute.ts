@@ -68,11 +68,11 @@ export function useRoute() {
       );
       if (!res.ok) {
         const body = await res.json().catch(() => null);
-        throw new Error(body?.error ?? 'Failed to find route');
+        throw new Error(body?.error ?? 'Impossible de trouver un itinéraire');
       }
       const data: MultiRouteResult = await res.json();
       if (!data.found || data.routes.length === 0) {
-        setError('No route found between these stations');
+        setError('Aucun itinéraire trouvé entre ces stations');
       } else {
         setRoutes(data.routes);
         if (data.walkingEstimate) setWalkingEstimate(data.walkingEstimate);
@@ -80,7 +80,7 @@ export function useRoute() {
       }
     } catch (err) {
       if (err instanceof Error && err.name === 'AbortError') return;
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
     } finally {
       setLoading(false);
     }

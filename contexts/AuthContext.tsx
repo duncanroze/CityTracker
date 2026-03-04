@@ -37,8 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Check existing session on mount
   useEffect(() => {
     fetch('/api/auth/me')
-      .then(res => res.json())
-      .then(data => setUser(data.user ?? null))
+      .then(res => res.ok ? res.json() : null)
+      .then(data => setUser(data?.user ?? null))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);

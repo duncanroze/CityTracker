@@ -90,7 +90,7 @@ export default function NavigationProgress({ route, phase }: NavigationProgressP
   const currentIdx = getCurrentStepIndex(route, phase);
 
   return (
-    <div className="flex items-center gap-1 justify-center py-1">
+    <div className="flex items-center gap-1 justify-center py-1" role="progressbar" aria-label="Progression du trajet" aria-valuenow={currentIdx} aria-valuemin={0} aria-valuemax={steps.length - 1}>
       {steps.map((step, i) => (
         <div key={step.key} className="flex items-center gap-1">
           <div

@@ -12,12 +12,3 @@ export function distanceMeters(lat1: number, lng1: number, lat2: number, lng2: n
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
-
-/** Check if position is within radius of a target point */
-export function isNearby(
-  position: { lat: number; lng: number },
-  target: { lat: number; lng: number },
-  radiusMeters: number,
-): boolean {
-  return distanceMeters(position.lat, position.lng, target.lat, target.lng) <= radiusMeters;
-}

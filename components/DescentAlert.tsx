@@ -9,7 +9,7 @@ interface DescentAlertProps {
 
 export default function DescentAlert({ stationName, onDismiss }: DescentAlertProps) {
   return (
-    <div className="flex items-center gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 animate-in fade-in slide-in-from-top-2 duration-300">
+    <div role="alert" className="flex items-center gap-2.5 rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 animate-in fade-in slide-in-from-top-2 duration-300">
       <BellRing className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-amber-700 dark:text-amber-300">
@@ -18,7 +18,7 @@ export default function DescentAlert({ stationName, onDismiss }: DescentAlertPro
       </div>
       <button
         onClick={onDismiss}
-        className="p-0.5 text-amber-600/60 hover:text-amber-700 dark:text-amber-400/60 dark:hover:text-amber-300 transition-colors"
+        className="p-0.5 text-amber-600/60 hover:text-amber-700 dark:text-amber-400/60 dark:hover:text-amber-300 transition-colors rounded focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
         aria-label="Fermer"
       >
         <X className="w-3.5 h-3.5" />

@@ -67,7 +67,7 @@ export default function LignesPage() {
 
   if (error) {
     return (
-      <div className="rounded-lg bg-destructive/10 text-destructive text-sm px-4 py-3">
+      <div role="alert" className="rounded-lg bg-destructive/10 text-destructive text-sm px-4 py-3">
         Erreur : {error}
       </div>
     );

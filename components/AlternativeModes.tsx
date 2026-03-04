@@ -29,8 +29,10 @@ export default function AlternativeModes({ walking, cycling, activeMode, onClick
       {walking && (
         <button
           onClick={onClickWalking}
+          aria-label={`À pied : ${formatDuration(walking.durationSeconds)}, ${formatDistance(walking.distanceMeters)}`}
+          aria-pressed={activeMode === 'walking'}
           className={cn(
-            'flex-1 flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors text-left',
+            'flex-1 flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors text-left focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
             activeMode === 'walking'
               ? 'border-foreground/30 bg-foreground/5 ring-1 ring-foreground/10'
               : 'border-border bg-card hover:border-foreground/20',
@@ -46,8 +48,10 @@ export default function AlternativeModes({ walking, cycling, activeMode, onClick
       {cycling && (
         <button
           onClick={onClickCycling}
+          aria-label={`Vélo : ${formatDuration(cycling.durationSeconds)}, ${formatDistance(cycling.distanceMeters)}`}
+          aria-pressed={activeMode === 'cycling'}
           className={cn(
-            'flex-1 flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors text-left',
+            'flex-1 flex items-center gap-2.5 rounded-lg border px-3 py-2 transition-colors text-left focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
             activeMode === 'cycling'
               ? 'border-foreground/30 bg-foreground/5 ring-1 ring-foreground/10'
               : 'border-border bg-card hover:border-foreground/20',

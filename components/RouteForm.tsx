@@ -61,7 +61,7 @@ export default function RouteForm({ stations, loading, onSearch, onSelectionChan
 
   if (collapsed) {
     return (
-      <button onClick={onExpand} className="w-full text-left group">
+      <button onClick={onExpand} className="w-full text-left group focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 rounded-lg" aria-label="Modifier l'itinéraire">
         <Card className="py-3 gap-0 transition-colors group-hover:border-foreground/20">
           <CardContent>
             <div className="flex items-center gap-3">

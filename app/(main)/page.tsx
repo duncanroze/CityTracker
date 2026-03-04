@@ -391,9 +391,13 @@ function ItineraireContent() {
         // Fallback to clipboard
       }
     }
-    await navigator.clipboard.writeText(url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access denied — silently fail
+    }
   }, []);
 
   if (stationsLoading) {
@@ -412,7 +416,7 @@ function ItineraireContent() {
 
   if (stationsError) {
     return (
-      <div className="rounded-lg bg-destructive/10 text-destructive text-sm px-4 py-3">
+      <div role="alert" className="rounded-lg bg-destructive/10 text-destructive text-sm px-4 py-3">
         Erreur : {stationsError}
       </div>
     );
@@ -456,7 +460,7 @@ function ItineraireContent() {
       </div>
 
       {routeError && (
-        <div className="rounded-lg bg-destructive/10 text-destructive text-sm px-4 py-3">
+        <div role="alert" className="rounded-lg bg-destructive/10 text-destructive text-sm px-4 py-3">
           {routeError}
         </div>
       )}

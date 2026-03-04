@@ -404,7 +404,7 @@ function triggerDescentAlert(stationName: string) {
   // Browser notification
   if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
     new Notification('CityTracker', {
-      body: `Preparez-vous a descendre a ${stationName}`,
+      body: `Préparez-vous à descendre à ${stationName}`,
       tag: 'descent-alert',
       requireInteraction: true,
     });

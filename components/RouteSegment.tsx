@@ -117,7 +117,7 @@ export default function RouteSegment({ segment, disruption }: RouteSegmentProps)
             onClick={() => setExpanded(true)}
             aria-label={`Afficher ${middleStops.length} arrêts intermédiaires`}
             aria-expanded={expanded}
-            className="flex items-center gap-2 py-1.5 pl-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center gap-2 py-1.5 pl-1 text-xs text-muted-foreground hover:text-foreground transition-colors rounded focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
           >
             <span
               className="w-2 h-2 rounded-full border-2 shrink-0"

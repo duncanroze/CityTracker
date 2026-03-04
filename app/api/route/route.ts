@@ -150,7 +150,11 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    const strategy = (searchParams.get('strategy') as RouteStrategy) || 'fastest';
+    const validStrategies: RouteStrategy[] = ['fastest', 'fewest_transfers', 'least_walking'];
+    const rawStrategy = searchParams.get('strategy') ?? 'fastest';
+    const strategy: RouteStrategy = validStrategies.includes(rawStrategy as RouteStrategy)
+      ? (rawStrategy as RouteStrategy)
+      : 'fastest';
     const result = await findRoutes(fromStationId, toStationId, strategy);
 
     // Enrich routes with real-time departures + walking legs

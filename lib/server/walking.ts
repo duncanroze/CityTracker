@@ -7,8 +7,8 @@
 // FOSSGIS OSRM servers — dedicated instances per profile (foot, bike, car)
 // The public OSRM demo (router.project-osrm.org) only supports 'car' in practice,
 // which causes pedestrian routes to follow one-way streets like a car.
-const OSRM_FOOT = 'https://routing.openstreetmap.de/routed-foot/route/v1/driving';
-const OSRM_BIKE = 'https://routing.openstreetmap.de/routed-bike/route/v1/driving';
+const OSRM_FOOT = 'https://routing.openstreetmap.de/routed-foot/route/v1/walking';
+const OSRM_BIKE = 'https://routing.openstreetmap.de/routed-bike/route/v1/cycling';
 
 export interface DirectionsResult {
   /** Path as [lat, lng] coordinate pairs */
@@ -18,9 +18,6 @@ export interface DirectionsResult {
   /** Duration in seconds (OSRM estimate) */
   durationSeconds: number;
 }
-
-/** @deprecated Use DirectionsResult */
-export type WalkingDirections = DirectionsResult;
 
 /**
  * Fetch walking directions between two points via OSRM.

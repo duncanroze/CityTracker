@@ -95,6 +95,12 @@ export default function MobileDrawer({ children }: MobileDrawerProps) {
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
+        role="slider"
+        aria-label="Redimensionner le panneau"
+        aria-valuemin={0}
+        aria-valuemax={2}
+        aria-valuenow={snapIdx}
+        tabIndex={0}
       >
         <div className="h-1.5 w-[60px] rounded-full bg-muted-foreground/25" />
       </div>
@@ -108,7 +114,7 @@ export default function MobileDrawer({ children }: MobileDrawerProps) {
       <div className={cn(
         'flex-1 min-h-0 overflow-y-auto px-4 pb-4',
         snapIdx === 0 && 'overflow-hidden',
-      )}>
+      )} style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
         {children}
       </div>
     </div>

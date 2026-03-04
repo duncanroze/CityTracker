@@ -24,14 +24,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Code invalide' }, { status: 400 });
     }
 
+    // Rate limiting: max 5 attempts, then lock out
+    if (user.verificationAttempts >= 5) {
+      return NextResponse.json(
+        { error: 'Trop de tentatives. Demandez un nouveau code.' },
+        { status: 429 },
+      );
+    }
+
     // Check expiry
     if (user.verificationExpiresAt && user.verificationExpiresAt < new Date()) {
-      return NextResponse.json({ error: 'Code expire, demandez un nouveau code' }, { status: 410 });
+      return NextResponse.json({ error: 'Code expiré, demandez un nouveau code' }, { status: 410 });
     }
 
     // Timing-safe comparison via bcrypt verify
     const valid = await verifyPassword(code, user.verificationCode);
     if (!valid) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { verificationAttempts: { increment: 1 } },
+      });
       return NextResponse.json({ error: 'Code incorrect' }, { status: 401 });
     }
 
@@ -42,6 +54,7 @@ export async function POST(request: NextRequest) {
         emailVerified: true,
         verificationCode: null,
         verificationExpiresAt: null,
+        verificationAttempts: 0,
       },
     });
 

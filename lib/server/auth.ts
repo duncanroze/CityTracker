@@ -110,7 +110,9 @@ export async function getAuthFromRequest(request: NextRequest): Promise<{ user: 
 // ─── Verification code ───────────────────────────────────────
 
 export function generateVerificationCode(): string {
-  return String(Math.floor(100000 + Math.random() * 900000));
+  const buf = new Uint32Array(1);
+  crypto.getRandomValues(buf);
+  return String(100000 + (buf[0] % 900000));
 }
 
 // ─── Public user shape (no password hash) ───────────────────

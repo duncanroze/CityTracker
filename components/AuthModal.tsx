@@ -33,6 +33,15 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
   const [resendCooldown, setResendCooldown] = useState(0);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handler);
+    return () => document.removeEventListener('keydown', handler);
+  }, [onClose]);
+
   // Cooldown timer
   useEffect(() => {
     if (resendCooldown <= 0) return;
@@ -113,25 +122,32 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
   }, []);
 
   const handleCodeKeyDown = useCallback((index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace' && !codeDigits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
+    if (e.key === 'Backspace') {
+      setCodeDigits(prev => {
+        if (!prev[index] && index > 0) {
+          setTimeout(() => inputRefs.current[index - 1]?.focus(), 0);
+        }
+        return prev;
+      });
     }
-  }, [codeDigits]);
+  }, []);
 
   const handleCodePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     if (pasted.length === 0) return;
-    const newDigits = [...codeDigits];
-    for (let i = 0; i < pasted.length && i < 6; i++) {
-      newDigits[i] = pasted[i];
-    }
-    setCodeDigits(newDigits);
-    // Focus the next empty input or last filled
-    const nextEmpty = newDigits.findIndex(d => !d);
-    const focusIdx = nextEmpty === -1 ? 5 : nextEmpty;
-    inputRefs.current[focusIdx]?.focus();
-  }, [codeDigits]);
+    setCodeDigits(prev => {
+      const newDigits = [...prev];
+      for (let i = 0; i < pasted.length && i < 6; i++) {
+        newDigits[i] = pasted[i];
+      }
+      // Focus the next empty input or last filled
+      const nextEmpty = newDigits.findIndex(d => !d);
+      const focusIdx = nextEmpty === -1 ? 5 : nextEmpty;
+      setTimeout(() => inputRefs.current[focusIdx]?.focus(), 0);
+      return newDigits;
+    });
+  }, []);
 
   const handleVerifySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -147,7 +163,7 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
       await verifyCode(verifyEmail, code);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Erreur de verification');
+      setError(err instanceof Error ? err.message : 'Erreur de vérification');
       // Clear digits on error
       setCodeDigits(['', '', '', '', '', '']);
       setTimeout(() => inputRefs.current[0]?.focus(), 50);
@@ -177,7 +193,7 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
         verifyCode(verifyEmail, code)
           .then(() => onClose())
           .catch(err => {
-            setError(err instanceof Error ? err.message : 'Erreur de verification');
+            setError(err instanceof Error ? err.message : 'Erreur de vérification');
             setCodeDigits(['', '', '', '', '', '']);
             setTimeout(() => inputRefs.current[0]?.focus(), 50);
           })
@@ -187,7 +203,7 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
   }, [codeDigits, view, verifyEmail, verifyCode, onClose, submitting]);
 
   return createPortal(
-    <div className="fixed inset-0 z-[100] flex items-center justify-center">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center" role="dialog" aria-modal="true" aria-label={view === 'form' ? 'Authentification' : 'Vérification par email'}>
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-sm mx-4 rounded-xl border border-border bg-card shadow-xl animate-in fade-in zoom-in-95 duration-200">
         {view === 'form' ? (
@@ -197,7 +213,7 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
                 <button
                   onClick={() => switchTab('login')}
                   className={cn(
-                    'rounded-full px-3 py-1 text-sm font-medium transition-colors',
+                    'rounded-full px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
                     tab === 'login' ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
@@ -206,14 +222,14 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
                 <button
                   onClick={() => switchTab('signup')}
                   className={cn(
-                    'rounded-full px-3 py-1 text-sm font-medium transition-colors',
+                    'rounded-full px-3 py-1 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
                     tab === 'signup' ? 'bg-foreground/10 text-foreground' : 'text-muted-foreground hover:text-foreground',
                   )}
                 >
                   Inscription
                 </button>
               </div>
-              <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+              <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 rounded" aria-label="Fermer">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -221,8 +237,9 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
             <form onSubmit={handleSubmit} className="p-4 space-y-3">
               {tab === 'signup' && (
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Nom (optionnel)</label>
+                  <label htmlFor="auth-displayname" className="text-xs font-medium text-muted-foreground">Nom (optionnel)</label>
                   <input
+                    id="auth-displayname"
                     type="text"
                     value={displayName}
                     onChange={e => setDisplayName(e.target.value)}
@@ -233,8 +250,9 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
                 </div>
               )}
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Email</label>
+                <label htmlFor="auth-email" className="text-xs font-medium text-muted-foreground">Email</label>
                 <input
+                  id="auth-email"
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
@@ -245,12 +263,13 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-muted-foreground">Mot de passe</label>
+                <label htmlFor="auth-password" className="text-xs font-medium text-muted-foreground">Mot de passe</label>
                 <input
+                  id="auth-password"
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder={tab === 'signup' ? '8 caracteres minimum' : ''}
+                  placeholder={tab === 'signup' ? '8 caractères minimum' : ''}
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-foreground/30 transition-colors"
                   required
                   minLength={tab === 'signup' ? 8 : undefined}
@@ -258,8 +277,9 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
               </div>
               {tab === 'signup' && (
                 <div>
-                  <label className="text-xs font-medium text-muted-foreground">Confirmer le mot de passe</label>
+                  <label htmlFor="auth-confirm-password" className="text-xs font-medium text-muted-foreground">Confirmer le mot de passe</label>
                   <input
+                    id="auth-confirm-password"
                     type="password"
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
@@ -271,35 +291,35 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
               )}
 
               {error && (
-                <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+                <p role="alert" className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
               )}
 
               <button
                 type="submit"
                 disabled={submitting}
                 className={cn(
-                  'w-full rounded-lg bg-foreground text-background py-2.5 text-sm font-medium transition-opacity',
+                  'w-full rounded-lg bg-foreground text-background py-2.5 text-sm font-medium transition-opacity focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
                   submitting && 'opacity-50 cursor-wait',
                 )}
               >
                 {submitting
                   ? 'Chargement...'
-                  : tab === 'login' ? 'Se connecter' : 'Creer un compte'}
+                  : tab === 'login' ? 'Se connecter' : 'Créer un compte'}
               </button>
             </form>
           </>
         ) : (
           <>
             <div className="flex items-center justify-between px-4 pt-4">
-              <h2 className="text-sm font-semibold">Verifiez votre email</h2>
-              <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
+              <h2 className="text-sm font-semibold">Vérifiez votre email</h2>
+              <button onClick={onClose} className="p-1 text-muted-foreground hover:text-foreground transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 rounded" aria-label="Fermer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
             <form onSubmit={handleVerifySubmit} className="p-4 space-y-4">
               <p className="text-sm text-muted-foreground">
-                Un code a 6 chiffres a ete envoye a <span className="font-medium text-foreground">{verifyEmail}</span>
+                Un code à 6 chiffres a été envoyé à <span className="font-medium text-foreground">{verifyEmail}</span>
               </p>
 
               <div className="flex justify-center gap-2" onPaste={handleCodePaste}>
@@ -324,18 +344,18 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
               </div>
 
               {error && (
-                <p className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
+                <p role="alert" className="text-sm text-destructive bg-destructive/10 rounded-lg px-3 py-2">{error}</p>
               )}
 
               <button
                 type="submit"
                 disabled={submitting || codeDigits.some(d => !d)}
                 className={cn(
-                  'w-full rounded-lg bg-foreground text-background py-2.5 text-sm font-medium transition-opacity',
+                  'w-full rounded-lg bg-foreground text-background py-2.5 text-sm font-medium transition-opacity focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2',
                   (submitting || codeDigits.some(d => !d)) && 'opacity-50 cursor-wait',
                 )}
               >
-                {submitting ? 'Verification...' : 'Verifier'}
+                {submitting ? 'Vérification...' : 'Vérifier'}
               </button>
 
               <div className="text-center">
@@ -344,7 +364,7 @@ export default function AuthModal({ onClose, initialTab = 'login' }: AuthModalPr
                   onClick={handleResendCode}
                   disabled={resendCooldown > 0}
                   className={cn(
-                    'text-sm transition-colors',
+                    'text-sm transition-colors focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 rounded',
                     resendCooldown > 0
                       ? 'text-muted-foreground/50 cursor-not-allowed'
                       : 'text-muted-foreground hover:text-foreground',
