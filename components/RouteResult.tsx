@@ -1,9 +1,10 @@
 import { Footprints, MapPin } from 'lucide-react';
-import type { RouteResult as RouteResultType, WalkingLeg } from '@/types';
+import type { RouteResult as RouteResultType, WalkingLeg, CommunityReport } from '@/types';
 import type { DisruptionsMap } from '@/hooks/useDisruptions';
 import RouteSummary from './RouteSummary';
 import RouteSegment from './RouteSegment';
 import TransferIndicator from './TransferIndicator';
+import ReportInlineAlert from './ReportInlineAlert';
 import { Card, CardContent } from '@/components/ui/card';
 
 function shortAddress(address: string): string {
@@ -41,9 +42,11 @@ function WalkingIndicator({ leg, direction }: { leg: WalkingLeg; direction: 'fro
 interface RouteResultProps {
   route: RouteResultType;
   disruptions?: DisruptionsMap;
+  communityAlerts?: CommunityReport[];
+  onUpvoteAlert?: (id: string) => void;
 }
 
-export default function RouteResult({ route, disruptions }: RouteResultProps) {
+export default function RouteResult({ route, disruptions, communityAlerts, onUpvoteAlert }: RouteResultProps) {
   if (route.walkingOnly && route.walkingDirect) {
     const wd = route.walkingDirect;
     const mins = Math.round(wd.durationSeconds / 60);
@@ -94,6 +97,14 @@ export default function RouteResult({ route, disruptions }: RouteResultProps) {
                 <TransferIndicator transfer={route.transfers[i - 1]} />
               )}
               <RouteSegment segment={segment} disruption={disruptions?.[segment.lineCode]} />
+              {communityAlerts?.filter(a =>
+                segment.stops.some(s => s.stationId === a.stationId) &&
+                (a.lineCode === segment.lineCode || !a.lineCode)
+              ).map(alert => (
+                <div key={alert.id} className="pl-6 mt-1">
+                  <ReportInlineAlert report={alert} onUpvote={onUpvoteAlert} />
+                </div>
+              ))}
             </div>
           ))}
           {route.walkingTo && (

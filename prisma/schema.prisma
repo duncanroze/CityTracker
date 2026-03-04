@@ -8,6 +8,21 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+enum ReportType {
+  CONTROLEURS
+  RAME_BONDEE
+  ESCALATOR_PANNE
+  ASCENSEUR_PANNE
+  RETARD_NON_SIGNALE
+  GREVE
+}
+
+enum ReportLocationType {
+  PLATFORM
+  TRANSFER_CORRIDOR
+  STATION_EXIT
+}
+
 enum TransportType {
   METRO
   RER
@@ -39,6 +54,7 @@ model Station {
   isAccessible Boolean   @default(false)
   municipality String?
   lineStops    LineStop[]
+  reports      Report[]
 
   @@index([name])
   @@index([latitude, longitude])
@@ -93,6 +109,8 @@ model User {
   updatedAt             DateTime  @updatedAt
   sessions              Session[]
   favorites             Favorite[]
+  reports               Report[]
+  reportUpvotes         ReportUpvote[]
 
   @@index([email])
 }
@@ -122,5 +140,44 @@ model Favorite {
   createdAt DateTime @default(now())
 
   @@unique([userId, fromLat, fromLng, toLat, toLng])
+  @@index([userId])
+}
+
+model Report {
+  id            String             @id @default(cuid())
+  type          ReportType
+  locationType  ReportLocationType
+  stationId     String
+  station       Station            @relation(fields: [stationId], references: [id], onDelete: Cascade)
+  lineCode      String?
+  direction     String?
+  fromLineCode  String?
+  toLineCode    String?
+  comment       String?
+  userId        String
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  upvoteCount   Int                @default(0)
+  expiresAt     DateTime
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  upvotes       ReportUpvote[]
+
+  @@index([stationId])
+  @@index([expiresAt])
+  @@index([type])
+  @@index([lineCode])
+  @@index([createdAt])
+}
+
+model ReportUpvote {
+  id        String   @id @default(cuid())
+  reportId  String
+  report    Report   @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([reportId, userId])
+  @@index([reportId])
   @@index([userId])
 }

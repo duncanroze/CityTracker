@@ -5,6 +5,7 @@ import { MapContainer, TileLayer, Polyline, CircleMarker, Circle, Marker, Toolti
 import type { LatLngTuple } from 'leaflet';
 import L from 'leaflet';
 import { useMapContext } from '@/contexts/MapContext';
+import ReportMapMarkers from './ReportMapMarkers';
 
 function MapController({ onZoomChange }: { onZoomChange: (zoom: number) => void }) {
   const map = useMap();
@@ -440,6 +441,9 @@ export default function AppMap() {
             ))}
           </>
         )}
+
+        {/* Community report markers */}
+        <ReportMapMarkers />
 
         {/* Preview pins (shown before route search) */}
         {!routeData && previewPins.map((pin) => (

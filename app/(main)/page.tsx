@@ -18,6 +18,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Navigation, Share2, Check, Star, X, Locate, Radar } from 'lucide-react';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useRouteSimulator } from '@/hooks/useRouteSimulator';
+import { useRouteAlerts } from '@/hooks/useRouteAlerts';
+import { useUpvoteReport } from '@/hooks/useUpvoteReport';
 import dynamic from 'next/dynamic';
 
 const DevSimulatorPanel = process.env.NODE_ENV === 'development'
@@ -79,6 +81,8 @@ function ItineraireContent() {
   const geo = useGeolocation();
   const { setRouteOverlay, clearOverlay, setPreviewPin, removePreviewPin, clearPreviewPins, lastMapClick, setLastMapClick, lastPinDrag, setLastPinDrag, setUserPosition } = useMapContext();
   const simulator = useRouteSimulator({ setUserPosition, updateNavPosition: navigation.updatePosition });
+  const routeAlerts = useRouteAlerts(selectedRoute?.route ?? null);
+  const { upvote: upvoteAlert } = useUpvoteReport();
 
   // Feed geolocation updates to navigation + map
   useEffect(() => {
@@ -580,7 +584,7 @@ function ItineraireContent() {
               </button>
             )}
           </div>
-          <RouteResultView route={selectedRoute.route} disruptions={disruptions} />
+          <RouteResultView route={selectedRoute.route} disruptions={disruptions} communityAlerts={routeAlerts} onUpvoteAlert={upvoteAlert} />
         </div>
       )}
     </div>

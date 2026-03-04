@@ -134,6 +134,33 @@ export interface LineWithStations {
   stations: LineStation[];
 }
 
+// ─── Community Reports ───────────────────────────────────
+
+export type ReportType = 'CONTROLEURS' | 'RAME_BONDEE' | 'ESCALATOR_PANNE' | 'ASCENSEUR_PANNE' | 'RETARD_NON_SIGNALE' | 'GREVE';
+export type ReportLocationType = 'PLATFORM' | 'TRANSFER_CORRIDOR' | 'STATION_EXIT';
+
+export interface CommunityReport {
+  id: string;
+  type: ReportType;
+  locationType: ReportLocationType;
+  stationId: string;
+  stationName: string;
+  stationLat: number;
+  stationLng: number;
+  lineCode: string | null;
+  direction: string | null;
+  fromLineCode: string | null;
+  toLineCode: string | null;
+  comment: string | null;
+  upvoteCount: number;
+  userUpvoted: boolean;
+  confidence: number;
+  expiresAt: number;
+  createdAt: number;
+  reporterName: string | null;
+  userId: string;
+}
+
 // ─── Navigation ───────────────────────────────────────────
 
 export type NavigationPhase =

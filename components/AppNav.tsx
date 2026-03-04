@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Route, TrainFront, AlertTriangle } from 'lucide-react';
+import { Route, TrainFront, AlertTriangle, MessageSquareWarning } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/', label: 'Itinéraire', icon: Route, exact: true },
   { href: '/lignes', label: 'Lignes', icon: TrainFront, exact: false },
-  { href: '/trafic', label: 'Infos trafic', icon: AlertTriangle, exact: true },
+  { href: '/trafic', label: 'Trafic', icon: AlertTriangle, exact: true },
+  { href: '/communaute', label: 'Signalements', icon: MessageSquareWarning, exact: true },
 ];
 
 export default function AppNav({ showLabels }: { showLabels?: boolean } = {}) {
