@@ -64,11 +64,20 @@ app/
       page.tsx              # Disruption dashboard
   api/
     stations/route.ts       # GET /api/stations
-    route/route.ts          # GET /api/route?from=&to=
+    route/route.ts          # GET /api/route?from=&to=&strategy=
     lines/route.ts          # GET /api/lines
     departures/route.ts     # GET /api/departures?lineStopId=
     disruptions/route.ts    # GET /api/disruptions
     geocode/route.ts        # GET /api/geocode?q= (forward) or ?lat=&lng= (reverse)
+    favorites/route.ts      # GET/POST /api/favorites (authenticated)
+    favorites/[id]/route.ts # DELETE /api/favorites/:id (authenticated)
+    auth/
+      login/route.ts        # POST /api/auth/login
+      signup/route.ts       # POST /api/auth/signup
+      verify/route.ts       # POST /api/auth/verify (email code verification)
+      resend-code/route.ts  # POST /api/auth/resend-code
+      logout/route.ts       # POST /api/auth/logout
+      me/route.ts           # GET /api/auth/me (session check)
 
 components/
   ui/                       # shadcn/ui primitives
@@ -83,8 +92,12 @@ components/
   RouteSummary.tsx          # Duration/stations/transfers/ETA grid
   RouteSegment.tsx          # Vertical timeline with stops + real-time countdown
   TransferIndicator.tsx     # Walking transfer indicator
+  AlternativeModes.tsx      # Walking/cycling alternative mode buttons
   LineBadge.tsx             # Line badge with disruption dot
-  MobileDrawer.tsx          # Responsive drawer for mobile view
+  MobileDrawer.tsx          # Responsive drawer for mobile view (safe-area-inset-bottom)
+  AuthModal.tsx             # Login/signup/verify modal (portal, Escape to close)
+  UserMenu.tsx              # User avatar dropdown (Escape to close)
+  GeolocationButton.tsx     # Browser geolocation button
   NavigationView.tsx        # Navigation mode wrapper (header, ETA, progress, step card)
   NavigationStepCard.tsx    # Phase-specific step card (walking, waiting, riding, transfer, arrived)
   NavigationProgress.tsx    # Progress dots for navigation phases
@@ -95,6 +108,7 @@ components/
 
 contexts/
   MapContext.tsx            # Map overlay state, dark mode, map clicks, preview pins (React Context)
+  AuthContext.tsx           # Auth state, login/signup/verify/logout (React Context)
 
 hooks/
   useRoute.ts               # Route search (fetch /api/route)
@@ -102,7 +116,7 @@ hooks/
   useLines.ts               # Lines list (fetch /api/lines)
   useDisruptions.ts         # Disruption polling (fetch /api/disruptions)
   useGeocode.ts             # Reverse geocoding (fetch /api/geocode)
-  useFavorites.ts           # Favorite routes (localStorage, max 10)
+  useFavorites.ts           # Favorite routes (authenticated API, max 10)
   useNavigation.ts          # Navigation phase machine (geolocation → phase transitions)
   useGeolocation.ts         # Browser Geolocation API wrapper (watchPosition)
   useRouteSimulator.ts      # DEV-only route position simulator playback hook
@@ -110,15 +124,19 @@ hooks/
 lib/
   utils.ts                  # cn() utility (clsx + tailwind-merge)
   route-simulator.ts        # Pure logic: build waypoint path from RouteResult, interpolate position
+  geo-utils.ts              # Haversine distance calculation (distanceMeters)
   server/
     prisma.ts               # Prisma client singleton (globalThis pattern)
     env.ts                  # Zod env validation (DATABASE_URL, PRIM_API_KEY)
+    auth.ts                 # Auth utilities (password hashing, JWT sessions, verification codes)
     graph.ts                # Transport graph (adjacency list from DB) + line termini + retry logic
     pathfinder.ts           # Dijkstra routing with transfer penalties + direction
     prim.ts                 # PRIM IDFM real-time API client (SIRI Lite)
     departures.ts           # Route enrichment with real-time departures & wait times
     headways.ts             # Per-line headway tracking (from PRIM data, with defaults)
     disruptions.ts          # Line disruption status from PRIM general-message API
+    walking.ts              # OSRM walking & cycling directions (FOSSGIS servers)
+    geo.ts                  # Nearest station finder + haversine
 
 types/
   index.ts                  # Shared TypeScript interfaces
@@ -236,6 +254,8 @@ The database is Neon PostgreSQL in production. Prisma reads `.env` (not `.env.lo
 
 ## Database Models
 
+- **User**: Auth users (email, passwordHash, emailVerified, verificationCode, verificationAttempts)
+- **Favorite**: Saved routes per user (from/to coordinates + labels, unique constraint, max 10)
 - **Line**: Transport lines (M1-M14, RER-A/B/C/D/E, T1-T3A, Transilien H/J/K/L/N/P/R/U)
 - **Station**: Physical stations with coordinates
 - **LineStop**: Junction of line + station (position, travelTimeToNext)
@@ -358,6 +378,34 @@ The `gh` CLI may not be available or on PATH. For git operations, prefer direct 
 - Uses OpenStreetMap Nominatim API (no API key required)
 - Forward: returns `{ results: [{ address, lat, lng }] }`
 - Reverse: returns `{ address, lat, lng }`
+
+## Authentication
+
+- Email/password auth with email verification (6-digit code)
+- Verification codes generated with `crypto.getRandomValues()` (not `Math.random()`)
+- Rate limiting: max 5 verification attempts per user (DB counter `verificationAttempts`, resets on success)
+- JWT session tokens stored in HTTP-only cookies
+- `AuthContext` provides `login`, `signup`, `verifyCode`, `resendCode`, `logout`
+- `AuthModal` renders via `createPortal`, supports Escape to close, proper ARIA dialog attributes
+- `UserMenu` shows avatar initial dropdown with Escape to close
+
+## Walking & Cycling Directions
+
+- OSRM (Open Source Routing Machine) via FOSSGIS public servers — no API key needed
+- `routed-foot` for walking, `routed-bike` for cycling (separate server instances)
+- Returns street-level path geometry + accurate distance/duration
+- Fallback: straight-line with haversine estimate if OSRM unavailable
+- Used for: walking legs to/from stations, direct walking/cycling estimates, walking-only routes
+
+## Accessibility Patterns
+
+- `focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2` on all interactive elements
+- `role="alert"` on all error containers
+- `role="dialog" aria-modal="true"` on modals
+- `aria-label` on icon-only buttons
+- `aria-pressed` on toggle buttons (AlternativeModes)
+- `aria-expanded` on collapsible sections (RouteSegment stops)
+- Escape key closes modals and dropdowns
 
 ## Navigation System
 
