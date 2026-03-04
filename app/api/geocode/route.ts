@@ -65,12 +65,12 @@ export async function GET(request: NextRequest) {
       const a = revData.address;
       let address = revData.display_name;
       if (a?.road) {
+        const clean = (s: string) => s.replace(/[,\s]+$/, '').trim();
         const parts: string[] = [];
-        if (a.house_number) parts.push(a.house_number);
-        parts.push(a.road);
-        if (a.postcode || a.city || a.municipality) {
-          parts.push([a.postcode, a.city || a.municipality].filter(Boolean).join(' '));
-        }
+        if (a.house_number) parts.push(clean(a.house_number));
+        parts.push(clean(a.road));
+        const cityPart = [a.postcode, a.city || a.municipality].filter(Boolean).map(clean).join(' ');
+        if (cityPart) parts.push(cityPart);
         address = parts.join(', ');
       }
 
@@ -124,35 +124,32 @@ export async function GET(request: NextRequest) {
       ? await generalRes.json()
       : { features: [] };
 
-    // Merge: Paris results first, then IDF from general (dedupe), then rest
+    // Merge all features, dedupe, sort by composite score (BAN score + IDF boost)
     const seen = new Set<string>();
-    const merged: { address: string; lat: number; lng: number }[] = [];
+    const scored: { address: string; lat: number; lng: number; sortScore: number }[] = [];
 
-    function addFeature(f: BANFeature) {
+    function addFeature(f: BANFeature, parisBoost: number) {
       const key = `${f.geometry.coordinates[1].toFixed(5)},${f.geometry.coordinates[0].toFixed(5)}`;
       if (seen.has(key)) return;
       seen.add(key);
-      merged.push({
+      const dept = (f.properties.postcode ?? '').slice(0, 2);
+      const idfBoost = IDF_DEPTS.has(dept) ? 0.05 : 0;
+      scored.push({
         address: f.properties.label,
         lat: f.geometry.coordinates[1],
         lng: f.geometry.coordinates[0],
+        sortScore: f.properties.score + parisBoost + idfBoost,
       });
     }
 
-    // 1. Paris results
-    for (const f of parisData.features) addFeature(f);
+    // Paris results get a small boost but don't unconditionally dominate
+    for (const f of parisData.features) addFeature(f, 0.05);
+    for (const f of generalData.features) addFeature(f, 0);
 
-    // 2. IDF results from general query
-    for (const f of generalData.features) {
-      const dept = (f.properties.postcode ?? '').slice(0, 2);
-      if (IDF_DEPTS.has(dept)) addFeature(f);
-    }
+    // Sort by composite score descending — best matches first regardless of source
+    scored.sort((a, b) => b.sortScore - a.sortScore);
 
-    // 3. Non-IDF results as fallback
-    for (const f of generalData.features) {
-      const dept = (f.properties.postcode ?? '').slice(0, 2);
-      if (!IDF_DEPTS.has(dept)) addFeature(f);
-    }
+    const merged = scored.map(({ address, lat, lng }) => ({ address, lat, lng }));
 
     return NextResponse.json(merged.slice(0, 5), {
       headers: {

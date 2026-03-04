@@ -82,6 +82,11 @@ export default function StationPicker({ label, stations, selected, onSelect }: S
 
   const showListbox = isOpen && (allItems.length > 0 || geocodeLoading);
 
+  // Clear query when selection is externally reset to null
+  useEffect(() => {
+    if (!selected) setQuery('');
+  }, [selected]);
+
   // Trigger geocode search when query changes
   useEffect(() => {
     if (query.length >= 3 && !selected) {

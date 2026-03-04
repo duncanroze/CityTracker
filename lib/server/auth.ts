@@ -122,5 +122,6 @@ export function sanitizeUser(user: User) {
     id: user.id,
     email: user.email,
     displayName: user.displayName,
+    theme: user.theme,
   };
 }

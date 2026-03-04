@@ -69,6 +69,10 @@ app/
     departures/route.ts     # GET /api/departures?lineStopId=
     disruptions/route.ts    # GET /api/disruptions
     geocode/route.ts        # GET /api/geocode?q= (forward) or ?lat=&lng= (reverse)
+    reports/route.ts        # GET/POST /api/reports (community incident reports)
+    reports/[id]/route.ts   # DELETE /api/reports/:id
+    reports/[id]/upvote/route.ts # POST /api/reports/:id/upvote
+    reports/route-alerts/route.ts # GET /api/reports/route-alerts?lineIds=
     favorites/route.ts      # GET/POST /api/favorites (authenticated)
     favorites/[id]/route.ts # DELETE /api/favorites/:id (authenticated)
     auth/
@@ -77,7 +81,7 @@ app/
       verify/route.ts       # POST /api/auth/verify (email code verification)
       resend-code/route.ts  # POST /api/auth/resend-code
       logout/route.ts       # POST /api/auth/logout
-      me/route.ts           # GET /api/auth/me (session check)
+      me/route.ts           # GET /api/auth/me + PATCH (session check, update theme)
 
 components/
   ui/                       # shadcn/ui primitives
@@ -223,8 +227,9 @@ dashboard/                   # Pipeline monitoring dashboard (dev tool)
 ## UI Design System
 
 - shadcn/ui components with CSS variables (light + dark mode via `.dark` class)
-- Design principle: neutral grayscale shell, transport line colors are the only chromatic elements
-- Dark mode state managed in MapContext, persisted in localStorage, toggleable from header
+- Design principle: indigo accent theme (from logo), transport line colors are the only other chromatic elements
+- Dark mode state managed in MapContext, persisted in localStorage + user DB (synced via PATCH /api/auth/me), toggleable from header
+- Logo SVG uses CSS custom properties (`--logo-grad0`, `--logo-text`, etc.) to avoid dark mode flash on refresh
 - Tailwind CSS v4 with `@theme inline {}` and `@custom-variant dark`
 - Map uses CartoDB Light/Dark tiles, TileLayer keyed by theme to force remount on toggle
 - Route option cards: metro-style circle bubbles with line colors; RER/Transilien use rounded rectangles
@@ -254,8 +259,11 @@ The database is Neon PostgreSQL in production. Prisma reads `.env` (not `.env.lo
 
 ## Database Models
 
-- **User**: Auth users (email, passwordHash, emailVerified, verificationCode, verificationAttempts)
+- **User**: Auth users (email, passwordHash, emailVerified, verificationCode, verificationAttempts, theme)
+- **Session**: JWT sessions per user (token, expiresAt)
 - **Favorite**: Saved routes per user (from/to coordinates + labels, unique constraint, max 10)
+- **Report**: Community incident reports (Waze-style, per station, with upvotes)
+- **ReportUpvote**: Upvotes on reports (one per user per report)
 - **Line**: Transport lines (M1-M14, RER-A/B/C/D/E, T1-T3A, Transilien H/J/K/L/N/P/R/U)
 - **Station**: Physical stations with coordinates
 - **LineStop**: Junction of line + station (position, travelTimeToNext)
@@ -269,6 +277,8 @@ The database is Neon PostgreSQL in production. Prisma reads `.env` (not `.env.lo
 | `DATABASE_URL` | PostgreSQL connection string (Neon pooler URL) | Yes |
 | `DIRECT_URL` | PostgreSQL direct URL (for Prisma migrations) | Yes |
 | `PRIM_API_KEY` | IDFM PRIM API key for real-time data | Optional (degrades gracefully) |
+| `JWT_SECRET` | Secret for signing JWT session cookies (min 32 chars) | Yes |
+| `RESEND_API_KEY` | Resend API key for email verification | Optional (degrades gracefully) |
 
 ## Dev Environment
 
@@ -360,11 +370,16 @@ The `gh` CLI may not be available or on PATH. For git operations, prefer direct 
 - `MapContext` parses query params on page load to pre-fill origin/destination
 - Uses `navigator.clipboard` with fallback to `navigator.share`
 
-### Favorites (localStorage)
-- `useFavorites` hook manages up to 10 saved routes in `localStorage` key `citytracker-favorites`
-- Star button in `RouteForm` toggles save/remove
+### Favorites
+- `useFavorites` hook manages up to 10 saved routes (authenticated API)
+- Star button toggles save/remove when route results are shown
 - Favorites displayed above search form when no route is active
 - Each favorite stores `{ from: {lat, lng, label}, to: {lat, lng, label}, createdAt }`
+
+### Search Reset
+- X button appears next to collapsed/expanded form when routes exist
+- Resets all state: routes, selections, pins, form inputs, map overlay
+- Returns to initial view with empty inputs and favorites list
 
 ### Map Click to Set Origin/Destination
 - Click the map (when no route overlay is active) to set origin (1st click) or destination (2nd click)
@@ -376,8 +391,8 @@ The `gh` CLI may not be available or on PATH. For git operations, prefer direct 
 ### Reverse Geocoding
 - `/api/geocode` endpoint supports both forward (`?q=address`) and reverse (`?lat=&lng=`) geocoding
 - Uses OpenStreetMap Nominatim API (no API key required)
-- Forward: returns `{ results: [{ address, lat, lng }] }`
-- Reverse: returns `{ address, lat, lng }`
+- Forward geocoding via BAN (Base Adresse Nationale) with score-based ranking (Paris/IDF boost)
+- Reverse: returns `{ address, lat, lng }` — address parts cleaned of trailing commas
 
 ## Authentication
 

@@ -75,7 +75,7 @@ export default function ItinerairePage() {
 function ItineraireContent() {
   const searchParams = useSearchParams();
   const { stations, loading: stationsLoading, error: stationsError } = useStations();
-  const { routes, selectedRoute, selectedIndex, selectRoute, loading: routeLoading, error: routeError, search, walkingEstimate, cyclingEstimate, strategy, changeStrategy } = useRoute();
+  const { routes, selectedRoute, selectedIndex, selectRoute, loading: routeLoading, error: routeError, search, clear: clearRoutes, walkingEstimate, cyclingEstimate, strategy, changeStrategy } = useRoute();
   const disruptions = useDisruptions();
   const navigation = useNavigation();
   const geo = useGeolocation();
@@ -370,6 +370,20 @@ function ItineraireContent() {
     }
   }, [getCurrentFromTo, isFavorite, addFavorite, removeFavorite]);
 
+  const handleReset = useCallback(() => {
+    clearRoutes();
+    setFormCollapsed(false);
+    setActiveAltMode(null);
+    fromSelRef.current = null;
+    toSelRef.current = null;
+    setFromSel(null);
+    setToSel(null);
+    setFromLabel('');
+    setToLabel('');
+    clearOverlay();
+    clearPreviewPins();
+  }, [clearRoutes, clearOverlay, clearPreviewPins]);
+
   const handleFavoriteClick = useCallback((fav: { from: { lat: number; lng: number; label: string }; to: { lat: number; lng: number; label: string } }) => {
     const fromSel: PickerSelection = { type: 'address', lat: fav.from.lat, lng: fav.from.lng, address: fav.from.label };
     const toSel: PickerSelection = { type: 'address', lat: fav.to.lat, lng: fav.to.lng, address: fav.to.label };
@@ -429,7 +443,7 @@ function ItineraireContent() {
   return (
     <div className="space-y-4 animate-in fade-in duration-200">
       <div className="flex items-start gap-2">
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           <RouteForm
             stations={stations}
             loading={routeLoading}
@@ -443,22 +457,33 @@ function ItineraireContent() {
             externalTo={toSel}
           />
         </div>
-        {formCollapsed && selectedRoute && (
-          <div className="flex flex-col gap-1 mt-1">
+        {routes.length > 0 && (
+          <div className="flex flex-col gap-1">
             <button
-              onClick={handleShare}
+              onClick={handleReset}
               className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
-              aria-label="Partager l'itinéraire"
+              aria-label="Nouvelle recherche"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
+              <X className="w-4 h-4" />
             </button>
-            <button
-              onClick={handleToggleFavorite}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
-              aria-label={currentIsFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-            >
-              <Star className={`w-4 h-4 ${currentIsFav ? 'fill-amber-400 text-amber-400' : ''}`} />
-            </button>
+            {formCollapsed && selectedRoute && (
+              <>
+                <button
+                  onClick={handleShare}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                  aria-label="Partager l'itinéraire"
+                >
+                  {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={handleToggleFavorite}
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors hover:text-foreground hover:border-foreground/20 focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2"
+                  aria-label={currentIsFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                >
+                  <Star className={`w-4 h-4 ${currentIsFav ? 'fill-amber-400 text-amber-400' : ''}`} />
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>

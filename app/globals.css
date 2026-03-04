@@ -54,18 +54,18 @@
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
+  --primary: oklch(0.511 0.262 276.966);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.962 0.018 272.314);
+  --secondary-foreground: oklch(0.359 0.144 278.697);
   --muted: oklch(0.97 0 0);
   --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --accent: oklch(0.93 0.034 272.767);
+  --accent-foreground: oklch(0.359 0.144 278.697);
   --destructive: oklch(0.577 0.245 27.325);
   --border: oklch(0.922 0 0);
   --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
+  --ring: oklch(0.585 0.233 277.117);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
@@ -73,14 +73,19 @@
   --chart-5: oklch(0.769 0.188 70.08);
   --sidebar: oklch(0.985 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.511 0.262 276.966);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.962 0.018 272.314);
+  --sidebar-accent-foreground: oklch(0.359 0.144 278.697);
   --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar-ring: oklch(0.585 0.233 277.117);
   --disruption-interrupted: oklch(0.577 0.245 27.325);
   --disruption-warning: oklch(0.75 0.183 55.934);
+  --logo-grad0: #6366f1;
+  --logo-grad1: #3b82f6;
+  --logo-accent: #6366f1;
+  --logo-text: #111827;
+  --logo-dot-stroke: white;
 }
 
 .dark {
@@ -90,18 +95,18 @@
   --card-foreground: oklch(0.985 0 0);
   --popover: oklch(0.205 0 0);
   --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
+  --primary: oklch(0.673 0.182 276.935);
+  --primary-foreground: oklch(0.257 0.109 277.508);
+  --secondary: oklch(0.269 0.02 277);
   --secondary-foreground: oklch(0.985 0 0);
   --muted: oklch(0.269 0 0);
   --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
+  --accent: oklch(0.269 0.02 277);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
+  --ring: oklch(0.673 0.182 276.935);
   --chart-1: oklch(0.488 0.243 264.376);
   --chart-2: oklch(0.696 0.17 162.48);
   --chart-3: oklch(0.769 0.188 70.08);
@@ -109,14 +114,19 @@
   --chart-5: oklch(0.645 0.246 16.439);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary: oklch(0.673 0.182 276.935);
   --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent: oklch(0.269 0.02 277);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.673 0.182 276.935);
   --disruption-interrupted: oklch(0.704 0.191 22.216);
   --disruption-warning: oklch(0.75 0.183 55.934);
+  --logo-grad0: #818cf8;
+  --logo-grad1: #60a5fa;
+  --logo-accent: #818cf8;
+  --logo-text: #ffffff;
+  --logo-dot-stroke: #0f172a;
 }
 
 @layer base {
@@ -130,15 +140,15 @@
 
 /* Subtle glow pulse for search button */
 @keyframes btn-glow {
-  0%, 100% { box-shadow: 0 0 0 0 oklch(0.205 0 0 / 0%); }
-  50% { box-shadow: 0 0 8px 2px oklch(0.205 0 0 / 12%); }
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.585 0.233 277.117 / 0%); }
+  50% { box-shadow: 0 0 8px 2px oklch(0.585 0.233 277.117 / 20%); }
 }
 .dark .btn-glow-ready {
   animation: btn-glow-dark 2s ease-in-out infinite;
 }
 @keyframes btn-glow-dark {
-  0%, 100% { box-shadow: 0 0 0 0 oklch(0.922 0 0 / 0%); }
-  50% { box-shadow: 0 0 8px 2px oklch(0.922 0 0 / 15%); }
+  0%, 100% { box-shadow: 0 0 0 0 oklch(0.673 0.182 276.935 / 0%); }
+  50% { box-shadow: 0 0 8px 2px oklch(0.673 0.182 276.935 / 25%); }
 }
 .btn-glow-ready {
   animation: btn-glow 2s ease-in-out infinite;

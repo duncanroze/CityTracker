@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
       include: {
         station: { select: { name: true, latitude: true, longitude: true } },
         user: { select: { displayName: true } },
-        upvotes: userId ? { where: { userId }, select: { id: true } } : false,
+        ...(userId ? { upvotes: { where: { userId }, select: { id: true } } } : {}),
       },
       orderBy: { createdAt: 'desc' },
       take: 100,

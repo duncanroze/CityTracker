@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from 'react';
 import type { RouteResult, LineWithStations } from '@/types';
 
 export interface PreviewPin {
@@ -65,13 +65,12 @@ export function MapProvider({ children }: { children: ReactNode }) {
   const [lastMapClick, setLastMapClick] = useState<MapClickEvent | null>(null);
   const [lastPinDrag, setLastPinDrag] = useState<PinDragEvent | null>(null);
   const [userPosition, setUserPosition] = useState<UserPosition | null>(null);
-  const [dark, setDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('theme');
-      return stored ? stored === 'dark' : true;
-    }
-    return true;
-  });
+  const [dark, setDark] = useState(true); // SSR-safe default (matches server)
+
+  useEffect(() => {
+    const stored = localStorage.getItem('theme');
+    if (stored === 'light') setDark(false);
+  }, []);
 
   const setRouteOverlay = useCallback((route: RouteResult | null) => {
     if (route) {

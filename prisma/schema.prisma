@@ -105,6 +105,7 @@ model User {
   verificationCode      String?
   verificationExpiresAt DateTime?
   verificationAttempts  Int       @default(0)
+  theme                 String    @default("dark")
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
   sessions              Session[]
