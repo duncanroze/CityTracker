@@ -1,10 +1,10 @@
+/* eslint-disable react-hooks/purity -- Date.now() is intentionally used for real-time ETA calculations */
 'use client';
 
 import { Footprints, TrainFront, MapPin, AlertTriangle } from 'lucide-react';
 import type { RouteResult, NavigationPhase } from '@/types';
 import LineBadge from './LineBadge';
 import DepartureChips from './DepartureChips';
-import { cn } from '@/lib/utils';
 
 interface NavigationStepCardProps {
   route: RouteResult;

@@ -39,6 +39,7 @@ export function useRouteSimulator(deps: SimulatorDeps): UseRouteSimulatorReturn 
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const speedRef = useRef(1);
   const depsRef = useRef(deps);
+  // eslint-disable-next-line react-hooks/refs -- keep ref in sync with latest deps for stable callbacks
   depsRef.current = deps;
 
   const clearTick = useCallback(() => {

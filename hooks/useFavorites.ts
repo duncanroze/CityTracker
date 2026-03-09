@@ -87,6 +87,7 @@ export function useFavorites() {
 
     if (!currentUserId) {
       // Logged out or anonymous → load from localStorage
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from localStorage
       setFavorites(loadLocal());
       return;
     }

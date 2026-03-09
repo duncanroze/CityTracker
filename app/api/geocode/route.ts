@@ -10,21 +10,6 @@ const reverseSchema = z.object({
   lng: z.coerce.number().min(-180).max(180),
 });
 
-interface NominatimAddress {
-  house_number?: string;
-  road?: string;
-  suburb?: string;
-  city?: string;
-  postcode?: string;
-}
-
-interface NominatimResult {
-  display_name: string;
-  lat: string;
-  lon: string;
-  address?: NominatimAddress;
-}
-
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = request.nextUrl;

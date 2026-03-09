@@ -84,6 +84,7 @@ export default function StationPicker({ label, stations, selected, onSelect }: S
 
   // Clear query when selection is externally reset to null
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from props
     if (!selected) setQuery('');
   }, [selected]);
 

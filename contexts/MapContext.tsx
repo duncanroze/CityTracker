@@ -69,6 +69,7 @@ export function MapProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const stored = localStorage.getItem('theme');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from localStorage
     if (stored === 'light') setDark(false);
   }, []);
 

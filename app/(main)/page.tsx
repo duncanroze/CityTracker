@@ -92,6 +92,7 @@ function ItineraireContent() {
     if (navigation.active) {
       navigation.updatePosition(geo.position.lat, geo.position.lng);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [geo.position, geo.accuracy, navigation.active, navigation.updatePosition, setUserPosition, simulator.active]);
 
   // Start/stop geolocation tracking with navigation lifecycle
@@ -292,7 +293,7 @@ function ItineraireContent() {
   }, [selectedRoute, setRouteOverlay, clearOverlay, activeAltMode]);
 
   // Build a walking-only RouteResult from a DirectEstimate for map display
-  const buildDirectRoute = useCallback((estimate: DirectEstimate, mode: 'walking' | 'cycling'): RouteResult | null => {
+  const buildDirectRoute = useCallback((estimate: DirectEstimate, _mode: 'walking' | 'cycling'): RouteResult | null => {
     const f = fromSelRef.current;
     const t = toSelRef.current;
     if (!f || !t || !estimate.path) return null;

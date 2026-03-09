@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { RouteResult, NavigationPhase, RouteSegment } from '@/types';
+import type { RouteResult, NavigationPhase } from '@/types';
 import { distanceMeters } from '@/lib/geo-utils';
 
 interface NavigationState {
@@ -68,7 +68,6 @@ export function useNavigation(): UseNavigationReturn {
       const departures = prev.route.segments[segmentIndex]?.nextDepartures;
       if (!departures || departureIndex >= departures.length) return prev;
 
-      const firstDep = new Date(departures[0]).getTime();
       const selectedDep = new Date(departures[departureIndex]).getTime();
       const oldSelected = prev.selectedDepartures[segmentIndex] ?? 0;
       const oldDep = new Date(departures[oldSelected]).getTime();
@@ -308,9 +307,11 @@ export function useNavigation(): UseNavigationReturn {
         refreshIntervalRef.current = null;
       }
     };
+  /* eslint-disable react-hooks/exhaustive-deps -- complex conditional deps are intentional */
   }, [state?.phase.type, state?.phase.type === 'waiting_for_train' ? (state.phase as { segmentIndex: number }).segmentIndex : -1,
     state?.phase.type === 'riding' ? (state.phase as { segmentIndex: number }).segmentIndex : -1,
     state?.phase.type === 'transfer_walking' ? (state.phase as { transferIndex: number }).transferIndex : -1]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   // Auto-select best departure based on ETA — only once per phase transition
   useEffect(() => {
@@ -374,7 +375,7 @@ export function useNavigation(): UseNavigationReturn {
     if (bestIdx !== currentIdx) {
       selectDeparture(segIdx, bestIdx);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    /* eslint-disable react-hooks/exhaustive-deps -- complex conditional deps are intentional */
   }, [
     state?.phase.type,
     state?.phase.type === 'walking_to_station' ? state?.route?.segments[0]?.nextDepartures : null,
@@ -383,6 +384,7 @@ export function useNavigation(): UseNavigationReturn {
     state?.phase.type === 'transfer_walking' ? state?.route?.segments[(state?.phase as { transferIndex: number }).transferIndex + 1]?.nextDepartures : null,
     selectDeparture,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return {
     active,

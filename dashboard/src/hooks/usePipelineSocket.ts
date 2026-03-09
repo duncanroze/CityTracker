@@ -118,6 +118,7 @@ export function usePipelineSocket() {
     ws.onclose = () => {
       setConnectionStatus('disconnected');
       wsRef.current = null;
+      // eslint-disable-next-line react-hooks/immutability -- self-referencing reconnect is intentional
       reconnectTimer.current = setTimeout(connect, RECONNECT_DELAY);
     };
 

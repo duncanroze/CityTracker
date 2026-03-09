@@ -39,6 +39,7 @@ export default function AgentDashboard() {
   const [selectedAgent, setSelectedAgent] = useState<AgentId | null>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync mode from connection state
     if (connectionStatus === 'connected') setMode('live');
   }, [connectionStatus]);
 
