@@ -3,6 +3,7 @@
 import { useCallback, useRef, useEffect } from 'react';
 import { Locate, Loader2 } from 'lucide-react';
 import { useGeolocation } from '@/hooks/useGeolocation';
+import { useMapContext } from '@/contexts/MapContext';
 import type { PickerSelection } from '@/types';
 import { cn } from '@/lib/utils';
 
@@ -12,7 +13,8 @@ interface GeolocationButtonProps {
 }
 
 export default function GeolocationButton({ onPositionResolved, className }: GeolocationButtonProps) {
-  const { position, loading, error, requestPosition } = useGeolocation();
+  const { position, loading, error, accuracy, requestPosition } = useGeolocation();
+  const { setUserPosition } = useMapContext();
   const pendingRef = useRef(false);
 
   const handleClick = useCallback(() => {
@@ -24,6 +26,9 @@ export default function GeolocationButton({ onPositionResolved, className }: Geo
   useEffect(() => {
     if (!position || !pendingRef.current) return;
     pendingRef.current = false;
+
+    // Show user position marker on the map
+    setUserPosition({ lat: position.lat, lng: position.lng, accuracy: accuracy ?? 50 });
 
     // Reverse geocode to get a readable address
     fetch(`/api/geocode?lat=${position.lat}&lng=${position.lng}`)
@@ -45,7 +50,7 @@ export default function GeolocationButton({ onPositionResolved, className }: Geo
           address: `${position.lat.toFixed(4)}, ${position.lng.toFixed(4)}`,
         });
       });
-  }, [position, onPositionResolved]);
+  }, [position, accuracy, onPositionResolved, setUserPosition]);
 
   return (
     <button
