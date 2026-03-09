@@ -23,6 +23,7 @@ export default function MobileDrawer({ children }: MobileDrawerProps) {
   // Consume external drawer snap commands (e.g. auto-expand on route results)
   useEffect(() => {
     if (drawerSnap !== null) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- consume external command
       setSnapIdx(drawerSnap);
       setDrawerSnap(null);
     }

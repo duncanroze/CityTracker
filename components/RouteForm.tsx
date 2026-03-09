@@ -28,9 +28,11 @@ export default function RouteForm({ stations, loading, onSearch, onSelectionChan
 
   // Sync external selections (e.g. from favorite click) into internal state
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from props
     if (externalFrom !== undefined) setFrom(externalFrom);
   }, [externalFrom]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from props
     if (externalTo !== undefined) setTo(externalTo);
   }, [externalTo]);
 

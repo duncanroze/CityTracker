@@ -256,7 +256,6 @@ function pushSegment(
   const branches = graph.branchTermini.get(first.lineId);
   if (branches && branches.length > 0 && stops.length >= 2) {
     // Find which branch the last stop is on by matching its position range
-    const lastPos = last.position;
     const matchedBranch = branches.find((b) => {
       // A stop is on a branch if its name matches either terminus
       return b.last === last.stationName || b.first === last.stationName;

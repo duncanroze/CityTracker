@@ -474,7 +474,7 @@ const server = http.createServer(async (req, res) => {
     } else {
       json(res, 404, { error: 'Not found' });
     }
-  } catch (err) {
+  } catch {
     json(res, 400, { error: 'Invalid request body' });
   }
 });

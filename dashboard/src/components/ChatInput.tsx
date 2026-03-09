@@ -58,6 +58,7 @@ export default function ChatInput({
   // Sync pending plan to editable state
   useEffect(() => {
     if (pendingPlan) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync from props
       setEditedPlan(pendingPlan);
       setIsEditingPlan(false);
     }
@@ -91,7 +92,7 @@ export default function ChatInput({
               Plan propose
             </span>
             <span className="text-[12px] text-muted-foreground">
-              Validez ou modifiez le plan avant l'execution
+              Validez ou modifiez le plan avant l&apos;execution
             </span>
           </div>
           <button

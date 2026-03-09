@@ -7,6 +7,7 @@ export function useElapsedTime(startedAt: string | null, active: boolean): numbe
 
   useEffect(() => {
     if (!startedAt || !active) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset timer
       setElapsed(0);
       originRef.current = null;
       return;

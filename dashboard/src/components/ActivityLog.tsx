@@ -43,7 +43,7 @@ export default function ActivityLog({ logs }: ActivityLogProps) {
     <div className="rounded-lg border border-border bg-card p-4 relative">
       <div className="mb-2.5 flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
         <span className="inline-block h-1.5 w-1.5 rounded-full bg-status-running" />
-        Journal d'activite
+        Journal d&apos;activite
         <span className="ml-auto text-[10px] font-normal tabular-nums">{logs.length}</span>
       </div>
       <div ref={scrollRef} className="max-h-[300px] overflow-y-auto scroll-smooth">
